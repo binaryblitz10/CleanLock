@@ -6,6 +6,25 @@ import ServiceManagement
 final class Preferences {
     static let shared = Preferences()
 
+    enum LaunchMode: String, CaseIterable {
+        case persistent = "persistent"
+        case ephemeral = "ephemeral"
+
+        var displayName: String {
+            switch self {
+            case .persistent: return "Keep app running in background"
+            case .ephemeral:  return "Start cleaning immediately and quit afterward"
+        }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .persistent: return "Activate anytime with hotkey"
+            case .ephemeral:  return "App launches directly into Cleaning Mode"
+            }
+        }
+    }
+
     private let defaults = UserDefaults.standard
 
     private enum Key {
@@ -13,6 +32,7 @@ final class Preferences {
         static let hotkeyKeyCode = "hotkeyKeyCode"
         static let hotkeyModifiers = "hotkeyModifiers"
         static let launchAtLogin = "launchAtLogin"
+        static let launchMode = "launchMode"
     }
 
     private init() {
@@ -22,6 +42,7 @@ final class Preferences {
             // Carbon modifiers: Ctrl + Shift + Cmd
             Key.hotkeyModifiers: Int(controlKey | shiftKey | cmdKey),
             Key.launchAtLogin: false,
+            Key.launchMode: LaunchMode.persistent.rawValue,
         ])
     }
 
@@ -52,6 +73,19 @@ final class Preferences {
             defaults.set(Int(newValue.keyCode), forKey: Key.hotkeyKeyCode)
             defaults.set(Int(newValue.carbonModifiers), forKey: Key.hotkeyModifiers)
         }
+    }
+
+    // MARK: - Launch mode
+
+    var launchMode: LaunchMode {
+        get {
+            if let raw = defaults.string(forKey: Key.launchMode),
+               let mode = LaunchMode(rawValue: raw) {
+                return mode
+            }
+            return .persistent
+        }
+        set { defaults.set(newValue.rawValue, forKey: Key.launchMode) }
     }
 
     // MARK: - Launch at login

@@ -1,6 +1,11 @@
 # CleanLock
 
-A native macOS menu-bar utility that temporarily disables your keyboard and trackpad so you can clean your MacBook without triggering accidental input.
+A native macOS utility that temporarily disables your keyboard and trackpad so you can clean your MacBook without triggering accidental input.
+
+Two operating modes:
+
+- **Persistent utility** — stays in the menu bar, ready to activate anytime via hotkey
+- **Ephemeral cleaning** — launches, enters Cleaning Mode immediately, and quits when done
 
 - Native Swift + AppKit. No Electron, no webview, no helper daemons.
 - Single foreground process. CGEventTap is auto-cleaned by the kernel on process death — no persistent kernel state, no risk of staying locked across a crash.
@@ -41,18 +46,30 @@ The first run will prompt for **Accessibility** permission. Grant it in **System
 
 ## Usage
 
-1. Click the menu-bar `⌨` icon → **Start Cleaning Mode** (or press the configured hotkey, default `⌃⇧⌘K`).
-2. The screen goes black with the message:
+### Persistent mode (default)
+
+1. CleanLock lives in your menu bar as a `⌨` icon.
+2. Click the icon → **Start Cleaning Mode** (or press the configured hotkey, default `⌃⇧⌘K`).
+3. The screen goes black with the message:
 
    > **Cleaning Mode**
    >
    > Your keyboard and mouse are disabled.
-   > Press the Command (⌘) key 6 times to exit.
+   > Hold both ⌘ keys for 3 seconds to exit.
 
-3. Wipe down your keyboard / trackpad. Input is consumed at the HID event-tap level.
-4. To exit: press **Command six times** within ~3 s per press.
+4. Wipe down your keyboard / trackpad. Input is consumed at the HID event-tap level.
+5. To exit: **hold both left and right Command keys simultaneously for 3 seconds** (no other keys pressed).
 
-Settings (`⌘,` from the menu) let you change the hotkey, auto-unlock timeout, and launch-at-login.
+Settings (`⌘,` from the menu) let you change the hotkey, auto-unlock timeout, startup behavior, and launch-at-login.
+
+### Ephemeral mode
+
+1. Launch CleanLock (from Spotlight, Finder, or Dock) — it enters Cleaning Mode immediately.
+2. Clean your keyboard / trackpad.
+3. Hold both Command keys for 3 seconds to unlock.
+4. CleanLock quits automatically — no lingering menu bar, no background processes.
+
+To switch between modes: open Settings from the menu bar (persistent mode) or re-launch and change the startup behavior selector. On the next launch, the new mode takes effect.
 
 ---
 
@@ -61,14 +78,16 @@ Settings (`⌘,` from the menu) let you change the hotkey, auto-unlock timeout, 
 ```
 CleanLock/
 ├── App/                 AppDelegate, NSApplicationMain entry
-├── MenuBar/             NSStatusItem + menu
+│                       (branches on LaunchMode: persistent vs ephemeral)
+├── MenuBar/             NSStatusItem + menu (persistent mode only)
 ├── Cleaning/            CleaningModeManager — state machine
 ├── Events/              EventInterceptor — CGEventTap
 ├── Overlay/             OverlayWindowController — full-screen black window
 ├── Safety/              SafetyManager — sleep/wake, signals, exceptions
-├── Hotkey/              HotkeyManager — Carbon RegisterEventHotKey
+├── Hotkey/              HotkeyManager — Carbon RegisterEventHotKey (persistent mode only)
 ├── Permissions/         Accessibility check + prompt
 ├── Settings/            Preferences + minimal AppKit settings window
+│                       (includes startup behavior selector)
 ├── Info.plist
 └── CleanLock.entitlements
 ```
@@ -147,10 +166,13 @@ Sandboxing is **disabled** (`com.apple.security.app-sandbox = false`) because sa
 
 Manual test plan (see source comments where relevant):
 
+### Persistent mode
+
 - [ ] Activate via menu — overlay appears, input ignored.
 - [ ] Activate via global hotkey while another app is focused.
-- [ ] Press Cmd six times → unlocks. Press Cmd five times, wait 4 s, press once → does **not** unlock (counter resets).
-- [ ] Hold Cmd — counts as a single press (no auto-repeat).
+- [ ] Hold both Command keys for 3 seconds → unlocks.
+- [ ] Hold only left Command for 3 seconds → does **not** unlock (need both).
+- [ ] Hold both Command keys with another key pressed → does **not** unlock.
 - [ ] While active, attempt `⌘⇥`, `⌘Space`, F-row brightness/volume, Mission Control swipe — all consumed.
 - [ ] Close lid → wake — app is unlocked, no stuck overlay.
 - [ ] Plug/unplug external keyboard — still locked, no crash.
@@ -159,15 +181,28 @@ Manual test plan (see source comments where relevant):
 - [ ] `kill -9 CleanLock` while active — input restored within ~1 s.
 - [ ] Auto-unlock timeout fires correctly.
 - [ ] Rapid toggle via hotkey — no double activation, no leaks (Activity Monitor stays flat).
+- [ ] Settings persist across relaunch (hotkey, timeout, launch mode).
+
+### Ephemeral mode
+
+- [ ] Set startup behavior to ephemeral, quit, and relaunch.
+- [ ] App enters Cleaning Mode immediately — no menu bar, no dock icon bounce.
+- [ ] Both Command keys for 3 seconds → unlock → app quits completely.
+- [ ] Dock icon disappears, no leftover `⌨` menu-bar item.
+- [ ] Force quit by Activity Monitor from ephemeral mode — no stuck state.
+- [ ] Switch back to persistent mode in Settings → relaunch → old behavior restored.
+- [ ] Missing Accessibility permission in ephemeral mode shows the system prompt and retries automatically once granted.
 
 ---
 
 ## Performance notes
 
-- Idle: no timers, no polling, no run-loop sources except those NSApplication creates by default. CPU stays at ~0%.
-- Active: one CFRunLoopSource for the event tap; callback work is allocation-free except for the Cmd-press dispatch.
+- Idle (persistent mode): no timers, no polling, no run-loop sources except those NSApplication creates by default. CPU stays at ~0%.
+- Ephemeral mode: skips menu-bar item, hotkey registration, and idle observers — zero background resource usage after quit.
+- Active: one CFRunLoopSource for the event tap; callback work is allocation-free except for the Command-hold dispatch.
 - Memory footprint: a few MB. The overlay is a single NSWindow with two NSTextFields.
 - Activation latency: dominated by `CGEvent.tapCreate` (sub-millisecond on modern Macs). Overlay shows first so users see immediate feedback.
+- Startup latency (ephemeral mode): from launch to active overlay in under 50 ms on Apple Silicon.
 
 ---
 

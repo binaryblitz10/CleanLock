@@ -7,10 +7,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let hotkeyField = HotkeyRecorderField()
     private let launchToggle = NSButton(checkboxWithTitle: "Launch at login",
                                         target: nil, action: nil)
+    private let persistentRadio = NSButton(radioButtonWithTitle: "", target: nil, action: nil)
+    private let ephemeralRadio = NSButton(radioButtonWithTitle: "", target: nil, action: nil)
+    private let accessibilityStatusField = NSTextField(labelWithString: "")
+    private let accessibilityGrantButton = NSButton(title: "Grant Access…", target: nil, action: nil)
 
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 440, height: 200),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 370),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -30,9 +34,37 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 14
+        stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(stack)
+
+        // ── Startup Behavior section ──
+        let sectionLabel = NSTextField(labelWithString: "Startup Behavior")
+        sectionLabel.font = NSFont.boldSystemFont(ofSize: NSFont.smallSystemFontSize)
+        sectionLabel.textColor = .secondaryLabelColor
+        sectionLabel.alignment = .left
+
+        let persistentRow = makeModeRow(
+            radio: persistentRadio,
+            title: Preferences.LaunchMode.persistent.displayName,
+            subtitle: Preferences.LaunchMode.persistent.subtitle
+        )
+        persistentRadio.tag = 0
+        persistentRadio.target = self
+        persistentRadio.action = #selector(modeChanged)
+
+        let ephemeralRow = makeModeRow(
+            radio: ephemeralRadio,
+            title: Preferences.LaunchMode.ephemeral.displayName,
+            subtitle: Preferences.LaunchMode.ephemeral.subtitle
+        )
+        ephemeralRadio.tag = 1
+        ephemeralRadio.target = self
+        ephemeralRadio.action = #selector(modeChanged)
+
+        // ── Settings section ──
+        let separator = NSBox()
+        separator.boxType = .separator
 
         // Timeout row
         timeoutPopup.addItems(withTitles: [
@@ -48,19 +80,38 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let timeoutRow = labeledRow(label: "Auto-unlock after:", control: timeoutPopup)
 
         // Hotkey row
-        hotkeyField.onChange = { [weak self] keyCode, mods in
-            guard let self = self else { return }
+        hotkeyField.onChange = { keyCode, mods in
             Preferences.shared.hotkey = .init(keyCode: keyCode, carbonModifiers: mods)
             HotkeyManager.shared.registerStoredHotkey()
         }
         let hotkeyRow = labeledRow(label: "Activation shortcut:", control: hotkeyField)
 
+        // ── Accessibility permission row ──
+        accessibilityGrantButton.target = self
+        accessibilityGrantButton.action = #selector(grantAccessibilityTapped)
+        accessibilityGrantButton.bezelStyle = .rounded
+
+        let accessControl = NSStackView(views: [accessibilityStatusField, accessibilityGrantButton])
+        accessControl.orientation = .horizontal
+        accessControl.spacing = 8
+        accessControl.alignment = .firstBaseline
+
+        let accessibilityRow = labeledRow(label: "Accessibility:", control: accessControl)
+
         // Launch-at-login row
         launchToggle.target = self
         launchToggle.action = #selector(launchToggleChanged)
 
+        stack.addArrangedSubview(sectionLabel)
+        stack.addArrangedSubview(persistentRow)
+        stack.addArrangedSubview(ephemeralRow)
+        stack.addArrangedSubview(separator)
+        stack.setCustomSpacing(4, after: sectionLabel)
+        stack.setCustomSpacing(4, after: persistentRow)
+        stack.setCustomSpacing(4, after: ephemeralRow)
         stack.addArrangedSubview(timeoutRow)
         stack.addArrangedSubview(hotkeyRow)
+        stack.addArrangedSubview(accessibilityRow)
         stack.addArrangedSubview(launchToggle)
 
         NSLayoutConstraint.activate([
@@ -68,6 +119,27 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -20),
         ])
+    }
+
+    /// Creates a row with a radio button, a bold title, and a subtitle beneath it.
+    private func makeModeRow(radio: NSButton, title: String, subtitle: String) -> NSStackView {
+        let titleField = NSTextField(labelWithString: title)
+        titleField.font = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+
+        let subtitleField = NSTextField(labelWithString: subtitle)
+        subtitleField.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        subtitleField.textColor = .secondaryLabelColor
+
+        let labelStack = NSStackView(views: [titleField, subtitleField])
+        labelStack.orientation = .vertical
+        labelStack.spacing = 0
+        labelStack.alignment = .leading
+
+        let row = NSStackView(views: [radio, labelStack])
+        row.orientation = .horizontal
+        row.spacing = 6
+        row.alignment = .top
+        return row
     }
 
     private func labeledRow(label: String, control: NSView) -> NSStackView {
@@ -86,7 +158,28 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let prefs = Preferences.shared
         timeoutPopup.selectItem(at: timeoutIndex(for: prefs.autoUnlockSeconds))
         hotkeyField.set(keyCode: prefs.hotkey.keyCode, modifiers: prefs.hotkey.carbonModifiers)
-        launchToggle.state = prefs.launchAtLogin ? .on : .off
+        let isPersistent = Preferences.shared.launchMode == .persistent
+        persistentRadio.state = isPersistent ? .on : .off
+        ephemeralRadio.state = isPersistent ? .off : .on
+        updateLaunchToggleEnabled()
+        refreshAccessibilityStatus()
+    }
+
+    private func refreshAccessibilityStatus() {
+        if PermissionsManager.shared.hasAccessibility() {
+            let attrs: [NSAttributedString.Key: Any] = [
+                .foregroundColor: NSColor.systemGreen,
+                .font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
+            ]
+            accessibilityStatusField.attributedStringValue = NSAttributedString(
+                string: "Granted ✓", attributes: attrs
+            )
+            accessibilityGrantButton.isHidden = true
+        } else {
+            accessibilityStatusField.stringValue = "Not Granted"
+            accessibilityStatusField.textColor = .secondaryLabelColor
+            accessibilityGrantButton.isHidden = false
+        }
     }
 
     private func timeoutIndex(for seconds: Int) -> Int {
@@ -113,12 +206,37 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
+    private func updateLaunchToggleEnabled() {
+        let isEphemeral = Preferences.shared.launchMode == .ephemeral
+        launchToggle.isEnabled = !isEphemeral
+        if isEphemeral {
+            launchToggle.state = .off
+            if Preferences.shared.launchAtLogin {
+                Preferences.shared.launchAtLogin = false
+            }
+        } else {
+            launchToggle.state = Preferences.shared.launchAtLogin ? .on : .off
+        }
+    }
+
+    @objc private func modeChanged() {
+        let newMode: Preferences.LaunchMode = ephemeralRadio.state == .on ? .ephemeral : .persistent
+        persistentRadio.state = newMode == .persistent ? .on : .off
+        ephemeralRadio.state = newMode == .ephemeral ? .on : .off
+        Preferences.shared.launchMode = newMode
+        updateLaunchToggleEnabled()
+    }
+
     @objc private func timeoutChanged() {
         Preferences.shared.autoUnlockSeconds = secondsForTimeoutIndex(timeoutPopup.indexOfSelectedItem)
     }
 
     @objc private func launchToggleChanged() {
         Preferences.shared.launchAtLogin = launchToggle.state == .on
+    }
+
+    @objc private func grantAccessibilityTapped() {
+        PermissionsManager.shared.openAccessibilitySettings()
     }
 }
 

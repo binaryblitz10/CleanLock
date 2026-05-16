@@ -29,10 +29,15 @@ final class CleaningModeManager {
 
     private(set) var state: State = .idle
 
+    /// Called after deactivation completes. In ephemeral mode the AppDelegate
+    /// sets this to terminate the app.
+    var onDeactivated: (() -> Void)?
+
     private let interceptor = EventInterceptor()
     private let overlay = OverlayWindowController()
     private let cursor = CursorHider()
     private var autoUnlockTimer: DispatchSourceTimer?
+    private var permissionRetryTimer: DispatchSourceTimer?
 
     private let log = OSLog(subsystem: "com.cleanlock.app", category: "CleaningMode")
 
@@ -68,6 +73,9 @@ final class CleaningModeManager {
         guard PermissionsManager.shared.hasAccessibility() else {
             state = .failed
             PermissionsManager.shared.promptForAccessibility()
+            if Preferences.shared.launchMode == .ephemeral {
+                schedulePermissionRetry()
+            }
             return
         }
 
@@ -107,6 +115,10 @@ final class CleaningModeManager {
 
         performTeardown()
         state = .idle
+
+        if Preferences.shared.launchMode == .ephemeral {
+            onDeactivated?()
+        }
     }
 
     /// Synchronous, no-checks teardown — used from termination / crash paths.
@@ -120,6 +132,7 @@ final class CleaningModeManager {
 
     private func performTeardown() {
         cancelAutoUnlockTimer()
+        cancelPermissionRetry()
         interceptor.uninstall()
         overlay.hide()
         // Cursor restore must happen unconditionally on every teardown path:
@@ -156,5 +169,30 @@ final class CleaningModeManager {
         alert.alertStyle = .warning
         alert.addButton(withTitle: "OK")
         alert.runModal()
+    }
+
+    // MARK: - Permission retry (ephemeral mode)
+
+    /// Polls for Accessibility permission every 2 seconds and retries activation
+    /// once granted. Used only in ephemeral mode so the app retries
+    /// automatically after the user grants permission in System Settings.
+    private func schedulePermissionRetry() {
+        cancelPermissionRetry()
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + 2, repeating: .seconds(2), leeway: .seconds(1))
+        timer.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            guard PermissionsManager.shared.hasAccessibility() else { return }
+            self.cancelPermissionRetry()
+            self.state = .idle
+            self.activate()
+        }
+        permissionRetryTimer = timer
+        timer.resume()
+    }
+
+    private func cancelPermissionRetry() {
+        permissionRetryTimer?.cancel()
+        permissionRetryTimer = nil
     }
 }

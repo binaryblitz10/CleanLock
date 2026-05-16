@@ -31,9 +31,15 @@ final class PermissionsManager {
         alert.addButton(withTitle: "Open System Settings")
         alert.addButton(withTitle: "Cancel")
         if alert.runModal() == .alertFirstButtonReturn {
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
+            openAccessibilitySettings()
+        }
+    }
+
+    /// Opens the Accessibility privacy pane in System Settings without showing
+    /// the alert. Suitable for direct invocation from the Settings window.
+    func openAccessibilitySettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
         }
     }
 }
