@@ -13,10 +13,10 @@ final class SettingsViewModel: ObservableObject {
     @Published var launchAtLogin: Bool
     @Published var hasAccessibility: Bool
 
-    private let prefs = Preferences.shared
     private var cancellables = Set<AnyCancellable>()
 
     init() {
+        let prefs = Preferences.shared
         self.launchMode = prefs.launchMode
         self.autoUnlockSeconds = prefs.autoUnlockSeconds
         self.hotkeyKeyCode = prefs.hotkey.keyCode
@@ -24,13 +24,11 @@ final class SettingsViewModel: ObservableObject {
         self.launchAtLogin = prefs.launchAtLogin
         self.hasAccessibility = PermissionsManager.shared.hasAccessibility()
 
-        // Write changes through to Preferences immediately.
         $launchMode
             .dropFirst()
-            .sink { [weak self] mode in
+            .sink { mode in
                 Preferences.shared.launchMode = mode
                 if mode == .launcher {
-                    self?.launchAtLogin = false
                     Preferences.shared.launchAtLogin = false
                 }
             }
@@ -65,76 +63,164 @@ final class SettingsViewModel: ObservableObject {
 struct SettingsView: View {
     @ObservedObject var model: SettingsViewModel
 
-    private static let timeoutOptions: [(label: String, seconds: Int)] = [
-        ("Disabled", 0),
-        ("1 minute", 60),
-        ("3 minutes", 180),
-        ("5 minutes", 300),
-        ("10 minutes", 600),
-        ("30 minutes", 1800),
+    private let timeoutOptions: [(label: String, seconds: Int)] = [
+        ("Disabled", 0), ("1 minute", 60), ("3 minutes", 180),
+        ("5 minutes", 300), ("10 minutes", 600), ("30 minutes", 1800),
     ]
 
     var body: some View {
-        Form {
-            Section {
-                Picker("", selection: $model.launchMode) {
-                    Text(Preferences.LaunchMode.persistent.displayName)
-                        .tag(Preferences.LaunchMode.persistent)
-                    Text(Preferences.LaunchMode.launcher.displayName)
-                        .tag(Preferences.LaunchMode.launcher)
-                }
-                .pickerStyle(.radioGroup)
+        VStack(spacing: 14) {
+            // ── General section ──
+            sectionHeader("General")
 
-                Text(launchModeSubtitle)
-                    .font(.system(size: NSFont.smallSystemFontSize))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } header: {
-                Text("Startup Behavior")
+            GroupBox {
+                VStack(spacing: 10) {
+                    // Startup Behavior
+                    settingRow(leading: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Startup Behavior")
+                                .font(.system(size: 12, weight: .medium))
+                            Text(modeSubtitle)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }, trailing: {
+                        Picker("", selection: $model.launchMode) {
+                            Text("Menu Bar").tag(Preferences.LaunchMode.persistent)
+                            Text("Launcher").tag(Preferences.LaunchMode.launcher)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(width: 180)
+                    })
+                    .padding(.bottom, 2)
+
+                    Divider()
+
+                    // Activation Shortcut
+                    settingRow(leading: {
+                        Text("Activation Shortcut")
+                            .font(.system(size: 12))
+                    }, trailing: {
+                        HotkeyRecorderView(
+                            keyCode: $model.hotkeyKeyCode,
+                            modifiers: $model.hotkeyModifiers
+                        )
+                    })
+
+                    Divider()
+
+                    // Auto Unlock
+                    settingRow(leading: {
+                        Text("Auto Unlock")
+                            .font(.system(size: 12))
+                    }, trailing: {
+                        Picker("", selection: $model.autoUnlockSeconds) {
+                            ForEach(timeoutOptions, id: \.seconds) { opt in
+                                Text(opt.label).tag(opt.seconds)
+                            }
+                        }
+                        .frame(width: 120)
+                    })
+
+                    Divider()
+
+                    // Launch at Login
+                    settingRow(leading: {
+                        Text("Launch at Login")
+                            .font(.system(size: 12))
+                    }, trailing: {
+                        Toggle("", isOn: $model.launchAtLogin)
+                            .disabled(model.launchMode == .launcher)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                    })
+                }
+                .padding(12)
             }
+            .groupBoxStyle(CardGroupBoxStyle())
 
-            Section {
-                Picker("Auto-unlock after", selection: $model.autoUnlockSeconds) {
-                    ForEach(Self.timeoutOptions, id: \.seconds) { option in
-                        Text(option.label).tag(option.seconds)
+            // ── Permissions section ──
+            sectionHeader("Permissions")
+
+            GroupBox {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Accessibility")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Required for keyboard and mouse control")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
                     }
-                }
 
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Activation shortcut")
-                    HotkeyRecorderView(keyCode: $model.hotkeyKeyCode, modifiers: $model.hotkeyModifiers)
-                }
-
-                HStack(alignment: .firstTextBaseline) {
-                    Text("Accessibility")
                     Spacer()
+
                     if model.hasAccessibility {
                         Label("Granted", systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 11))
                             .foregroundStyle(.green)
                     } else {
                         Button("Grant Access…") {
                             PermissionsManager.shared.openAccessibilitySettings()
                         }
+                        .controlSize(.small)
                     }
                 }
+                .padding(12)
             }
-
-            Section {
-                Toggle("Launch at login", isOn: $model.launchAtLogin)
-                    .disabled(model.launchMode == .launcher)
-            }
+            .groupBoxStyle(CardGroupBoxStyle())
         }
-        .formStyle(.grouped)
-        .frame(minWidth: 440)
+        .padding(16)
+        .frame(width: 400)
     }
 
-    private var launchModeSubtitle: String {
+    // MARK: - Helpers
+
+    private func sectionHeader(_ text: String) -> some View {
+        HStack {
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+            Spacer()
+        }
+    }
+
+    private func settingRow<Leading: View, Trailing: View>(
+        @ViewBuilder leading: () -> Leading,
+        @ViewBuilder trailing: () -> Trailing
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            leading()
+            Spacer()
+            trailing()
+        }
+        .padding(.vertical, 1)
+    }
+
+    private var modeSubtitle: String {
         switch model.launchMode {
         case .persistent:
-            return "CleanLock stays in the menu bar. Activate anytime with the shortcut."
+            return "Runs in the menu bar. Activate anytime with the shortcut."
         case .launcher:
-            return "Show the launcher window on startup and after each cleaning session."
+            return "Shows a launcher window on startup and after cleaning."
         }
+    }
+}
+
+// MARK: - Card GroupBox Style
+
+private struct CardGroupBoxStyle: GroupBoxStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.content
+            .background {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.quaternary.opacity(0.35))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(.separator, lineWidth: 0.5)
+            }
     }
 }
 
@@ -158,13 +244,12 @@ struct HotkeyRecorderView: NSViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: HotkeyRecorderField, context: Context) -> CGSize {
-        CGSize(width: 180, height: 22)
+        CGSize(width: 150, height: 22)
     }
 }
 
 // MARK: - AppKit Hotkey Recorder Field
 
-/// Click to focus, then press a shortcut. Stores the captured key + modifiers.
 final class HotkeyRecorderField: NSTextField {
     var onChange: ((UInt32, UInt32) -> Void)?
     private var keyCode: UInt32 = 0
@@ -172,16 +257,16 @@ final class HotkeyRecorderField: NSTextField {
     private var recording = false
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 200, height: 22))
+        super.init(frame: NSRect(x: 0, y: 0, width: 150, height: 22))
         isEditable = false
         isSelectable = false
         alignment = .center
-        font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
+        font = .monospacedSystemFont(ofSize: 12, weight: .regular)
         focusRingType = .default
         refreshTitle()
     }
 
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    required init?(coder: NSCoder) { fatalError() }
 
     override var acceptsFirstResponder: Bool { true }
     override var canBecomeKeyView: Bool { true }
@@ -214,9 +299,7 @@ final class HotkeyRecorderField: NSTextField {
         }
 
         let carbonMods = HotkeyRecorderField.carbonModifiers(from: event.modifierFlags)
-        guard carbonMods != 0 else {
-            return
-        }
+        guard carbonMods != 0 else { return }
 
         keyCode = kc
         modifiers = carbonMods
@@ -296,12 +379,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         hostingView.translatesAutoresizingMaskIntoConstraints = false
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 340),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 360),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "CleanLock Settings"
+        window.title = "Settings"
         window.isReleasedWhenClosed = false
         window.center()
 

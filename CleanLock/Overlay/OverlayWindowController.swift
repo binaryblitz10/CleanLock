@@ -2,7 +2,7 @@ import AppKit
 import CoreGraphics
 
 /// Fullscreen overlay shown while cleaning mode is active.
-/// Uses a dark translucent material for a refined macOS 26 aesthetic.
+/// Uses a near-black warm gray for a refined, non-developer-dark-mode look.
 final class OverlayWindowController {
     private var window: NSWindow?
     private var previousPresentationOptions: NSApplication.PresentationOptions?
@@ -22,7 +22,7 @@ final class OverlayWindowController {
             screen: screen
         )
         w.isOpaque = true
-        w.backgroundColor = NSColor(red: 0.02, green: 0.02, blue: 0.02, alpha: 1.0)
+        w.backgroundColor = NSColor(red: 0.07, green: 0.07, blue: 0.075, alpha: 1.0)
         w.hasShadow = false
         w.ignoresMouseEvents = false
         w.isReleasedWhenClosed = false
@@ -76,13 +76,11 @@ final class OverlayWindowController {
     }
 }
 
-/// Borderless window that refuses to give up first responder.
 private final class OverlayWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 }
 
-/// Renders centered status text on a near-black background.
 private final class OverlayContentView: NSView {
     override var isFlipped: Bool { false }
     override var wantsUpdateLayer: Bool { true }
@@ -96,40 +94,56 @@ private final class OverlayContentView: NSView {
         super.init(frame: frameRect)
 
         wantsLayer = true
-        layer?.backgroundColor = NSColor(red: 0.02, green: 0.02, blue: 0.02, alpha: 1.0).cgColor
+        layer?.backgroundColor = NSColor(red: 0.07, green: 0.07, blue: 0.075, alpha: 1.0).cgColor
 
-        titleField.font = .systemFont(ofSize: 36, weight: .semibold)
-        titleField.alphaValue = 0.95
+        titleField.font = .systemFont(ofSize: 28, weight: .semibold)
+        titleField.alphaValue = 0.9
         titleField.stringValue = "Cleaning Mode"
         titleField.alignment = .center
 
         let subtitleStyle = NSMutableParagraphStyle()
         subtitleStyle.alignment = .center
-        subtitleStyle.lineSpacing = 8
+        subtitleStyle.lineSpacing = 6
 
         subtitleField.attributedStringValue = NSAttributedString(
-            string: "Your keyboard and mouse are disabled.\nHold both \u{2318} keys for 3 seconds to exit.",
+            string: "Your keyboard and mouse are disabled.",
             attributes: [
-                .font: NSFont.systemFont(ofSize: 16, weight: .regular),
-                .foregroundColor: NSColor(white: 1.0, alpha: 0.65),
+                .font: NSFont.systemFont(ofSize: 14, weight: .regular),
+                .foregroundColor: NSColor(white: 1.0, alpha: 0.55),
                 .paragraphStyle: subtitleStyle,
             ]
         )
-        subtitleField.alignment = .center
-        subtitleField.maximumNumberOfLines = 2
+
+        let hintStyle = NSMutableParagraphStyle()
+        hintStyle.alignment = .center
+
+        let hintField = OverlayContentView.makeLabel()
+        hintField.attributedStringValue = NSAttributedString(
+            string: "Hold both \u{2318} keys for 3 seconds to exit",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 12, weight: .regular),
+                .foregroundColor: NSColor(white: 1.0, alpha: 0.35),
+                .paragraphStyle: hintStyle,
+            ]
+        )
+        hintField.translatesAutoresizingMaskIntoConstraints = false
 
         titleField.translatesAutoresizingMaskIntoConstraints = false
         subtitleField.translatesAutoresizingMaskIntoConstraints = false
 
         addSubview(titleField)
         addSubview(subtitleField)
+        addSubview(hintField)
 
         NSLayoutConstraint.activate([
             titleField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            titleField.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -24),
+            titleField.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -20),
+
             subtitleField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            subtitleField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 20),
-            subtitleField.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, multiplier: 0.75),
+            subtitleField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 12),
+
+            hintField.centerXAnchor.constraint(equalTo: centerXAnchor),
+            hintField.topAnchor.constraint(equalTo: subtitleField.bottomAnchor, constant: 6),
         ])
     }
 

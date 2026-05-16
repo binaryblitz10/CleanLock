@@ -1,8 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Minimal launcher window hosting a SwiftUI view.
-/// Shown on app launch (launcher mode) and after cleaning mode exits.
+/// Minimal launcher window — compact, balanced, native utility feel.
 final class LauncherWindowController: NSWindowController {
 
     var onStartCleaning: (() -> Void)?
@@ -12,12 +11,13 @@ final class LauncherWindowController: NSWindowController {
     private let hostingView: NSHostingView<LauncherView>
 
     init() {
-        let launcherView = LauncherView()
-        self.hostingView = NSHostingView(rootView: launcherView)
-        self.hostingView.translatesAutoresizingMaskIntoConstraints = false
+        let view = LauncherView()
+        hostingView = NSHostingView(rootView: view)
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
 
+        let contentRect = NSRect(x: 0, y: 0, width: 380, height: 210)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 280),
+            contentRect: contentRect,
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -26,16 +26,13 @@ final class LauncherWindowController: NSWindowController {
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
-        window.center()
         window.level = .normal
 
-        // Apply window background material for Liquid Glass aesthetic.
-        let visualEffect = NSVisualEffectView(frame: window.contentView!.bounds)
+        let visualEffect = NSVisualEffectView(frame: NSRect(origin: .zero, size: contentRect.size))
         visualEffect.material = .windowBackground
         visualEffect.blendingMode = .behindWindow
         visualEffect.state = .active
         visualEffect.autoresizingMask = [.width, .height]
-        visualEffect.wantsLayer = true
         window.contentView!.addSubview(visualEffect, positioned: .below, relativeTo: nil)
 
         window.contentView!.addSubview(hostingView)
@@ -48,28 +45,19 @@ final class LauncherWindowController: NSWindowController {
 
         super.init(window: window)
 
-        // Wire callbacks after self is available.
         hostingView.rootView = LauncherView(
-            onStartCleaning: { [weak self] in
-                self?.onStartCleaning?()
-            },
-            onQuit: { [weak self] in
-                self?.onQuit?()
-            },
-            onSettings: { [weak self] in
-                self?.onSettings?()
-            }
+            onStartCleaning: { [weak self] in self?.onStartCleaning?() },
+            onQuit: { [weak self] in self?.onQuit?() },
+            onSettings: { [weak self] in self?.onSettings?() }
         )
     }
 
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
+    required init?(coder: NSCoder) { fatalError() }
 
-    /// Center on screen and bring forward.
     func showLauncher() {
         window?.center()
         showWindow(nil)
+        window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -85,59 +73,61 @@ private struct LauncherView: View {
     var onQuit: (() -> Void)?
     var onSettings: (() -> Void)?
 
-    init(
-        onStartCleaning: (() -> Void)? = nil,
-        onQuit: (() -> Void)? = nil,
-        onSettings: (() -> Void)? = nil
-    ) {
-        self.onStartCleaning = onStartCleaning
-        self.onQuit = onQuit
-        self.onSettings = onSettings
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            // Settings gear — top trailing corner.
-            HStack {
-                Spacer()
-                Button(action: { onSettings?() }) {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Settings")
-                .padding(.trailing, 16)
-                .padding(.top, 8)
+            // ── Content area ──
+            VStack(spacing: 8) {
+                Image(systemName: "keyboard")
+                    .font(.system(size: 28, weight: .ultraLight))
+                    .foregroundStyle(.secondary)
+
+                Text("CleanLock")
+                    .font(.system(size: 14, weight: .semibold))
+
+                Text("Temporarily disable your keyboard and\n" +
+                     "trackpad so you can safely clean them.")
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(2)
             }
+            .padding(.top, 20)
 
-            Spacer()
+            Spacer(minLength: 12)
 
-            // Primary CTA — centered.
+            // ── Primary action ──
             Button(action: { onStartCleaning?() }) {
                 Text("Start Cleaning")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(minWidth: 148)
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(minWidth: 130)
             }
             .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .keyboardShortcut(.return, modifiers: [])
+            .controlSize(.regular)
 
-            Spacer()
+            Spacer(minLength: 10)
 
-            // Quit — bottom trailing.
-            HStack {
+            // ── Separator ──
+            Rectangle()
+                .fill(.separator)
+                .frame(height: 1)
+
+            // ── Bottom action row ──
+            HStack(spacing: 0) {
+                Button("Settings…") { onSettings?() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
+
                 Spacer()
-                Button("Quit App") {
-                    onQuit?()
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
-                .font(.system(size: 12))
-                .padding(.trailing, 16)
-                .padding(.bottom, 12)
+
+                Button("Quit") { onQuit?() }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
         }
-        .frame(width: 420, height: 280)
+        .frame(width: 380, height: 210)
     }
 }
