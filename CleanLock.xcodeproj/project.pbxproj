@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		048C35951C20DD7F79A03B47 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2FDA72AB2C065B8A9EA18A8B /* Assets.xcassets */; };
 		23F5325E80E9C5979A2A40A2 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE66EC11E7CE7E443C1B04C5 /* AppKit.framework */; };
 		3035823E3029C4400B0A43B8 /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0196FFF1C94B0AB37DF25191 /* PermissionsManager.swift */; };
 		533FAE15EACFB483D9D441FE /* CleaningModeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69F474DE081BC7CC62A2231 /* CleaningModeManager.swift */; };
@@ -28,6 +29,7 @@
 /* Begin PBXFileReference section */
 		0196FFF1C94B0AB37DF25191 /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
 		02339D1966C1944CD364D12B /* Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preferences.swift; sourceTree = "<group>"; };
+		2FDA72AB2C065B8A9EA18A8B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		307BBF0E7701B1CB6E5DCB60 /* CleanLock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CleanLock.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3982737C0695F1E42E1AE2FB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		3B1BE8FB45FD677BF13E4B44 /* SafetyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyManager.swift; sourceTree = "<group>"; };
@@ -88,6 +90,7 @@
 		2C2974D02A3841907164C388 /* CleanLock */ = {
 			isa = PBXGroup;
 			children = (
+				2FDA72AB2C065B8A9EA18A8B /* Assets.xcassets */,
 				35012ACDEBF556D92F9E34D3 /* App */,
 				F77820F048DE434D047CA41C /* Cleaning */,
 				6CC6DB18530E5E96AB7F2942 /* Events */,
@@ -195,6 +198,7 @@
 			buildConfigurationList = DE54081FFA718347EC053B8B /* Build configuration list for PBXNativeTarget "CleanLock" */;
 			buildPhases = (
 				B748ABE649B4FB34375EF936 /* Sources */,
+				EB0AB0C202D1781B0ED25C5C /* Resources */,
 				19D92239F3FC1DB5532B37DB /* Frameworks */,
 			);
 			buildRules = (
@@ -241,6 +245,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EB0AB0C202D1781B0ED25C5C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				048C35951C20DD7F79A03B47 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		B748ABE649B4FB34375EF936 /* Sources */ = {

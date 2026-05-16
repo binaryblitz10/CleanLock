@@ -25,6 +25,7 @@ targets:
         excludes:
           - "**/*.entitlements"
           - "Info.plist"
+      - path: CleanLock/Assets.xcassets
     info:
       path: CleanLock/Info.plist
       properties:
@@ -33,6 +34,7 @@ targets:
         CFBundleVersion: "1"
         NSHumanReadableCopyright: ""
         LSMinimumSystemVersion: "13.0"
+        CFBundleIconFile: "AppIcon"
     entitlements:
       path: CleanLock/CleanLock.entitlements
       properties:
