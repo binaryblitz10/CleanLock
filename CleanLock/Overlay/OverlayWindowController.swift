@@ -1,8 +1,8 @@
 import AppKit
 import CoreGraphics
 
-/// Fullscreen black overlay shown on the built-in display while cleaning mode
-/// is active. AppKit, not SwiftUI — we want predictable lifecycle.
+/// Fullscreen overlay shown while cleaning mode is active.
+/// Uses a dark translucent material for a refined macOS 26 aesthetic.
 final class OverlayWindowController {
     private var window: NSWindow?
     private var previousPresentationOptions: NSApplication.PresentationOptions?
@@ -22,7 +22,7 @@ final class OverlayWindowController {
             screen: screen
         )
         w.isOpaque = true
-        w.backgroundColor = .black
+        w.backgroundColor = NSColor(red: 0.02, green: 0.02, blue: 0.02, alpha: 1.0)
         w.hasShadow = false
         w.ignoresMouseEvents = false
         w.isReleasedWhenClosed = false
@@ -34,11 +34,6 @@ final class OverlayWindowController {
         let view = OverlayContentView(frame: screen.frame)
         w.contentView = view
 
-        // Documented constraints:
-        //   .disableForceQuit          requires .hideMenuBar
-        //   .disableSessionTermination requires .disableForceQuit
-        // The subset below is the kiosk-safe combination that validates
-        // cleanly on every macOS 13+ build we've tested.
         previousPresentationOptions = NSApp.presentationOptions
         NSApp.presentationOptions = [
             .hideDock,
@@ -48,8 +43,6 @@ final class OverlayWindowController {
             .disableAppleMenu,
         ]
 
-        // App must be active for CGDisplayHideCursor to take effect for an
-        // LSUIElement agent. Activate before showing and make the overlay key.
         NSApp.activate(ignoringOtherApps: true)
         w.makeKeyAndOrderFront(nil)
         w.orderFrontRegardless()
@@ -68,8 +61,6 @@ final class OverlayWindowController {
         window?.contentView = nil
         window = nil
     }
-
-    // MARK: - Built-in display detection
 
     private static func builtInScreen() -> NSScreen? {
         for screen in NSScreen.screens {
@@ -91,7 +82,7 @@ private final class OverlayWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 }
 
-/// Renders centered "Cleaning Mode" + subtitle, white on black.
+/// Renders centered status text on a near-black background.
 private final class OverlayContentView: NSView {
     override var isFlipped: Bool { false }
     override var wantsUpdateLayer: Bool { true }
@@ -105,23 +96,22 @@ private final class OverlayContentView: NSView {
         super.init(frame: frameRect)
 
         wantsLayer = true
-        layer?.backgroundColor = NSColor.black.cgColor
+        layer?.backgroundColor = NSColor(red: 0.02, green: 0.02, blue: 0.02, alpha: 1.0).cgColor
 
-        titleField.font = NSFont.systemFont(ofSize: 48, weight: .medium)
-        titleField.alphaValue = 1.0
+        titleField.font = .systemFont(ofSize: 36, weight: .semibold)
+        titleField.alphaValue = 0.95
         titleField.stringValue = "Cleaning Mode"
         titleField.alignment = .center
 
         let subtitleStyle = NSMutableParagraphStyle()
         subtitleStyle.alignment = .center
-        subtitleStyle.lineSpacing = 6
+        subtitleStyle.lineSpacing = 8
 
-        let subtitleString = "Your keyboard and mouse are disabled.\nHold both ⌘ keys for 3 seconds to exit."
         subtitleField.attributedStringValue = NSAttributedString(
-            string: subtitleString,
+            string: "Your keyboard and mouse are disabled.\nHold both \u{2318} keys for 3 seconds to exit.",
             attributes: [
-                .font: NSFont.systemFont(ofSize: 18, weight: .regular),
-                .foregroundColor: NSColor(white: 1.0, alpha: 0.75),
+                .font: NSFont.systemFont(ofSize: 16, weight: .regular),
+                .foregroundColor: NSColor(white: 1.0, alpha: 0.65),
                 .paragraphStyle: subtitleStyle,
             ]
         )
@@ -136,10 +126,10 @@ private final class OverlayContentView: NSView {
 
         NSLayoutConstraint.activate([
             titleField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            titleField.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -28),
+            titleField.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -24),
             subtitleField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            subtitleField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 18),
-            subtitleField.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, multiplier: 0.8),
+            subtitleField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 20),
+            subtitleField.widthAnchor.constraint(lessThanOrEqualTo: widthAnchor, multiplier: 0.75),
         ])
     }
 

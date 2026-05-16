@@ -10,7 +10,6 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         super.init()
 
         if let button = statusItem.button {
-            // SF Symbol "keyboard.badge.eye" exists on macOS 13+; fall back if missing.
             let image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "CleanLock")
             image?.isTemplate = true
             button.image = image
@@ -71,11 +70,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         toggle.isEnabled = manager.state == .idle || manager.state == .active
     }
 
+    func refreshToggleTitle() {
+        // Let the next menu open refresh the title naturally.
+    }
+
     @objc private func toggleCleaningMode() {
         manager.toggle()
     }
 
-    @objc private func openSettings() {
+    @objc func openSettings() {
         if settingsWindowController == nil {
             settingsWindowController = SettingsWindowController()
         }
@@ -90,7 +93,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         alert.informativeText = """
         Temporarily disables your keyboard and trackpad so you can clean them.
 
-        Hold both Command (⌘) keys for 3 seconds to exit cleaning mode.
+        Hold both Command (\u{2318}) keys for 3 seconds to exit cleaning mode.
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")

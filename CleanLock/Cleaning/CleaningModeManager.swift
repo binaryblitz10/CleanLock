@@ -15,8 +15,8 @@ final class CleaningModeManager {
     }
 
     enum DeactivateReason {
-        case userUnlock          // dual-⌘ 3s hold
-        case userToggle          // menu / hotkey
+        case userUnlock
+        case userToggle
         case willSleep
         case screenLocked
         case displayChange
@@ -29,8 +29,8 @@ final class CleaningModeManager {
 
     private(set) var state: State = .idle
 
-    /// Called after deactivation completes. In ephemeral mode the AppDelegate
-    /// sets this to terminate the app.
+    /// Called after deactivation completes. The owner (AppDelegate) decides
+    /// what happens next — show launcher, terminate, or return to idle.
     var onDeactivated: (() -> Void)?
 
     private let interceptor = EventInterceptor()
@@ -46,7 +46,6 @@ final class CleaningModeManager {
             self?.deactivate(reason: .userUnlock)
         }
         interceptor.onTapDisabled = { [weak self] in
-            // Fail-safe: bail out immediately.
             self?.deactivate(reason: .eventTapDisabled)
         }
     }
@@ -60,7 +59,6 @@ final class CleaningModeManager {
         case .active:
             deactivate(reason: .userToggle)
         case .activating, .deactivating:
-            // Ignore double activation requests during transitions.
             break
         }
     }
@@ -69,11 +67,10 @@ final class CleaningModeManager {
         precondition(Thread.isMainThread)
         guard state == .idle || state == .failed else { return }
 
-        // Permission gate — fail closed.
         guard PermissionsManager.shared.hasAccessibility() else {
             state = .failed
             PermissionsManager.shared.promptForAccessibility()
-            if Preferences.shared.launchMode == .ephemeral {
+            if Preferences.shared.launchMode == .launcher {
                 schedulePermissionRetry()
             }
             return
@@ -82,8 +79,6 @@ final class CleaningModeManager {
         state = .activating
         os_log("Activating cleaning mode", log: log, type: .info)
 
-        // Show overlay BEFORE installing the event tap so the user sees feedback
-        // even if interception setup is slow.
         overlay.show()
 
         guard interceptor.install() else {
@@ -95,9 +90,7 @@ final class CleaningModeManager {
         }
 
         cursor.hide()
-
         startAutoUnlockTimerIfNeeded()
-
         state = .active
         os_log("Cleaning mode active", log: log, type: .info)
     }
@@ -105,7 +98,6 @@ final class CleaningModeManager {
     func deactivate(reason: DeactivateReason) {
         precondition(Thread.isMainThread)
         guard state == .active || state == .activating || state == .failed else {
-            // Even from idle, ensure no stale state. Cheap.
             performTeardown()
             return
         }
@@ -116,9 +108,7 @@ final class CleaningModeManager {
         performTeardown()
         state = .idle
 
-        if Preferences.shared.launchMode == .ephemeral {
-            onDeactivated?()
-        }
+        onDeactivated?()
     }
 
     /// Synchronous, no-checks teardown — used from termination / crash paths.
@@ -135,10 +125,6 @@ final class CleaningModeManager {
         cancelPermissionRetry()
         interceptor.uninstall()
         overlay.hide()
-        // Cursor restore must happen unconditionally on every teardown path:
-        // userUnlock, userToggle, willSleep, screenLocked, eventTapDisabled,
-        // timeout, permissionLost, appTermination, emergency. CursorHider is
-        // idempotent, so calling show() when not hidden is a no-op.
         cursor.show()
     }
 
@@ -171,11 +157,6 @@ final class CleaningModeManager {
         alert.runModal()
     }
 
-    // MARK: - Permission retry (ephemeral mode)
-
-    /// Polls for Accessibility permission every 2 seconds and retries activation
-    /// once granted. Used only in ephemeral mode so the app retries
-    /// automatically after the user grants permission in System Settings.
     private func schedulePermissionRetry() {
         cancelPermissionRetry()
         let timer = DispatchSource.makeTimerSource(queue: .main)

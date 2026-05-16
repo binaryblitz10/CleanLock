@@ -8,19 +8,19 @@ final class Preferences {
 
     enum LaunchMode: String, CaseIterable {
         case persistent = "persistent"
-        case ephemeral = "ephemeral"
+        case launcher = "launcher"
 
         var displayName: String {
             switch self {
             case .persistent: return "Keep app running in background"
-            case .ephemeral:  return "Start cleaning immediately and quit afterward"
-        }
+            case .launcher:   return "Show launcher window"
+            }
         }
 
         var subtitle: String {
             switch self {
             case .persistent: return "Activate anytime with hotkey"
-            case .ephemeral:  return "App launches directly into Cleaning Mode"
+            case .launcher:   return "App opens to a compact launcher window"
             }
         }
     }
@@ -37,28 +37,21 @@ final class Preferences {
 
     private init() {
         defaults.register(defaults: [
-            Key.autoUnlockSeconds: 300, // 5 minutes
+            Key.autoUnlockSeconds: 300,
             Key.hotkeyKeyCode: kVK_ANSI_K,
-            // Carbon modifiers: Ctrl + Shift + Cmd
             Key.hotkeyModifiers: Int(controlKey | shiftKey | cmdKey),
             Key.launchAtLogin: false,
             Key.launchMode: LaunchMode.persistent.rawValue,
         ])
     }
 
-    // MARK: - Auto-unlock timeout
-
-    /// Seconds before cleaning mode auto-exits. 0 = disabled.
     var autoUnlockSeconds: Int {
         get { defaults.integer(forKey: Key.autoUnlockSeconds) }
         set { defaults.set(newValue, forKey: Key.autoUnlockSeconds) }
     }
 
-    // MARK: - Hotkey
-
     struct Hotkey {
         var keyCode: UInt32
-        /// Carbon-style modifier mask (controlKey | shiftKey | cmdKey | optionKey).
         var carbonModifiers: UInt32
     }
 
@@ -75,8 +68,6 @@ final class Preferences {
         }
     }
 
-    // MARK: - Launch mode
-
     var launchMode: LaunchMode {
         get {
             if let raw = defaults.string(forKey: Key.launchMode),
@@ -87,8 +78,6 @@ final class Preferences {
         }
         set { defaults.set(newValue.rawValue, forKey: Key.launchMode) }
     }
-
-    // MARK: - Launch at login
 
     var launchAtLogin: Bool {
         get { defaults.bool(forKey: Key.launchAtLogin) }

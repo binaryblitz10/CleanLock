@@ -13,58 +13,102 @@ final class AppMain {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarController?
+    private var launcherWindowController: LauncherWindowController?
     private let cleaningManager = CleaningModeManager.shared
     private let safetyManager = SafetyManager.shared
     private let hotkeyManager = HotkeyManager.shared
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Install signal handlers first — guarantee cleanup on crash/termination.
         safetyManager.installSignalHandlers()
         safetyManager.installLifecycleObservers()
 
-        if Preferences.shared.launchMode == .ephemeral {
-            setupEphemeralMode()
+        if Preferences.shared.launchMode == .launcher {
+            setupLauncherMode()
         } else {
             setupPersistentMode()
         }
     }
 
+    // MARK: - Persistent mode
+
     private func setupPersistentMode() {
-        // Full menu bar utility — current default behavior.
         menuBarController = MenuBarController()
 
         hotkeyManager.onTrigger = { [weak self] in
             self?.cleaningManager.toggle()
         }
         hotkeyManager.registerStoredHotkey()
+
+        cleaningManager.onDeactivated = { [weak self] in
+            // Return to idle — menu bar remains active.
+            self?.menuBarController?.refreshToggleTitle()
+        }
     }
 
-    private func setupEphemeralMode() {
-        // Skip menu bar, hotkey, and idle listeners. Jump straight into
-        // Cleaning Mode. After teardown, the app terminates completely.
-        cleaningManager.onDeactivated = { [weak self] in
+    // MARK: - Launcher mode
+
+    private func setupLauncherMode() {
+        let launcher = LauncherWindowController()
+
+        launcher.onStartCleaning = { [weak self] in
+            self?.launcherWindowController?.hideLauncher()
+            self?.cleaningManager.activate()
+        }
+
+        launcher.onQuit = { [weak self] in
             self?.cleaningManager.forceDeactivate(reason: .appTermination)
             self?.hotkeyManager.unregister()
             NSApp.terminate(nil)
         }
 
-        // Let the runloop settle then activate — ensures the app is fully
-        // registered with the window server before we try to show the overlay.
-        DispatchQueue.main.async { [weak self] in
-            self?.cleaningManager.activate()
+        launcher.onSettings = { [weak self] in
+            self?.openSettings()
+        }
+
+        launcher.showLauncher()
+        launcherWindowController = launcher
+
+        cleaningManager.onDeactivated = { [weak self] in
+            // Return to launcher window after cleaning.
+            self?.launcherWindowController?.showLauncher()
         }
     }
 
+    // MARK: - Settings
+
+    private func openSettings() {
+        // Use the same settings path as the menu bar controller.
+        if let mbc = menuBarController {
+            mbc.openSettings()
+        } else {
+            // Launcher mode — create an ad-hoc settings controller.
+            let settingsWC = SettingsWindowController()
+            settingsWC.showWindow(nil)
+            // Keep alive by associating with the launcher.
+            objc_setAssociatedObject(
+                launcherWindowController as Any,
+                &settingsKey,
+                settingsWC,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    private var settingsKey: UInt8 = 0
+
+    // MARK: - Termination
+
     func applicationWillTerminate(_ notification: Notification) {
-        // Fail-safe: always tear down before exiting.
         cleaningManager.forceDeactivate(reason: .appTermination)
         hotkeyManager.unregister()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // In persistent mode we're a menu-bar agent — no window to reopen.
-        // In ephemeral mode the app should already be in Cleaning Mode or
-        // terminating, so returning false is correct either way.
+        if Preferences.shared.launchMode == .launcher {
+            launcherWindowController?.showLauncher()
+            return true
+        }
         return false
     }
 }
