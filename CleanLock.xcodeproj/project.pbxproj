@@ -1,0 +1,445 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		23F5325E80E9C5979A2A40A2 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DE66EC11E7CE7E443C1B04C5 /* AppKit.framework */; };
+		3035823E3029C4400B0A43B8 /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0196FFF1C94B0AB37DF25191 /* PermissionsManager.swift */; };
+		533FAE15EACFB483D9D441FE /* CleaningModeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69F474DE081BC7CC62A2231 /* CleaningModeManager.swift */; };
+		6537293CDBA76C8670F31CB2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88CB652B123929B95FD0FDFB /* AppDelegate.swift */; };
+		6570C8428627B36A9BCAEDDE /* EventInterceptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6CB8B4BE366B4B18CF96EF /* EventInterceptor.swift */; };
+		80486EF9EA843645BF2020A6 /* OverlayWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9D617CAAA6E033024EEE3F /* OverlayWindowController.swift */; };
+		8EC11E0255482D8ECC80C44C /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02339D1966C1944CD364D12B /* Preferences.swift */; };
+		9EE129C5BD1996FF8CB989A5 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7E41C854E1040EBE512C520 /* HotkeyManager.swift */; };
+		AF79DD60E2DA3FDD2EDDE7F0 /* SafetyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B1BE8FB45FD677BF13E4B44 /* SafetyManager.swift */; };
+		B03B025E37A44F7663F70397 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A415C9FA9F4EE7F51148DB05 /* Carbon.framework */; };
+		BD7CABA17C8E29D8E61713EC /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7A0EF16900C9B5D53D5D613 /* SettingsWindowController.swift */; };
+		C4548AF483383E43B88C4A58 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 80D4E499116F0F70546EFC41 /* IOKit.framework */; };
+		EC0A0F8C73F6405AFE431ABB /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 836E7DD8B7BB025F8C6C9394 /* ApplicationServices.framework */; };
+		F0E4E9969EE11E8017605C50 /* MenuBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBF40631DA82B1FBA5E766F3 /* MenuBarController.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0196FFF1C94B0AB37DF25191 /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
+		02339D1966C1944CD364D12B /* Preferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Preferences.swift; sourceTree = "<group>"; };
+		307BBF0E7701B1CB6E5DCB60 /* CleanLock.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CleanLock.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		3B1BE8FB45FD677BF13E4B44 /* SafetyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyManager.swift; sourceTree = "<group>"; };
+		80D4E499116F0F70546EFC41 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		836E7DD8B7BB025F8C6C9394 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
+		88CB652B123929B95FD0FDFB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		8C9D617CAAA6E033024EEE3F /* OverlayWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayWindowController.swift; sourceTree = "<group>"; };
+		A415C9FA9F4EE7F51148DB05 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
+		BBF40631DA82B1FBA5E766F3 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
+		C69F474DE081BC7CC62A2231 /* CleaningModeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleaningModeManager.swift; sourceTree = "<group>"; };
+		C7E41C854E1040EBE512C520 /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		D7A0EF16900C9B5D53D5D613 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		DE66EC11E7CE7E443C1B04C5 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
+		ED6CB8B4BE366B4B18CF96EF /* EventInterceptor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventInterceptor.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		19D92239F3FC1DB5532B37DB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B03B025E37A44F7663F70397 /* Carbon.framework in Frameworks */,
+				23F5325E80E9C5979A2A40A2 /* AppKit.framework in Frameworks */,
+				EC0A0F8C73F6405AFE431ABB /* ApplicationServices.framework in Frameworks */,
+				C4548AF483383E43B88C4A58 /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		16F485DF0743F8EA65135AEF /* Permissions */ = {
+			isa = PBXGroup;
+			children = (
+				0196FFF1C94B0AB37DF25191 /* PermissionsManager.swift */,
+			);
+			path = Permissions;
+			sourceTree = "<group>";
+		};
+		18D8298F49DDD9CE49513F27 = {
+			isa = PBXGroup;
+			children = (
+				2C2974D02A3841907164C388 /* CleanLock */,
+				A0984B93543D272CEE0E2B88 /* Frameworks */,
+				F5633739BA191651CCF42173 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		241E4E9D6A2FD68BA1F2AE34 /* Hotkey */ = {
+			isa = PBXGroup;
+			children = (
+				C7E41C854E1040EBE512C520 /* HotkeyManager.swift */,
+			);
+			path = Hotkey;
+			sourceTree = "<group>";
+		};
+		2C2974D02A3841907164C388 /* CleanLock */ = {
+			isa = PBXGroup;
+			children = (
+				35012ACDEBF556D92F9E34D3 /* App */,
+				F77820F048DE434D047CA41C /* Cleaning */,
+				6CC6DB18530E5E96AB7F2942 /* Events */,
+				241E4E9D6A2FD68BA1F2AE34 /* Hotkey */,
+				861ABA9A33C2F156E1F15DA0 /* MenuBar */,
+				94B097AAA36C1598719C6FCB /* Overlay */,
+				16F485DF0743F8EA65135AEF /* Permissions */,
+				E71AA4240DD90FD27D96FD69 /* Safety */,
+				C607A96CAF64709A17EC9C94 /* Settings */,
+			);
+			path = CleanLock;
+			sourceTree = "<group>";
+		};
+		35012ACDEBF556D92F9E34D3 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				88CB652B123929B95FD0FDFB /* AppDelegate.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		6CC6DB18530E5E96AB7F2942 /* Events */ = {
+			isa = PBXGroup;
+			children = (
+				ED6CB8B4BE366B4B18CF96EF /* EventInterceptor.swift */,
+			);
+			path = Events;
+			sourceTree = "<group>";
+		};
+		861ABA9A33C2F156E1F15DA0 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				BBF40631DA82B1FBA5E766F3 /* MenuBarController.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+		94B097AAA36C1598719C6FCB /* Overlay */ = {
+			isa = PBXGroup;
+			children = (
+				8C9D617CAAA6E033024EEE3F /* OverlayWindowController.swift */,
+			);
+			path = Overlay;
+			sourceTree = "<group>";
+		};
+		A0984B93543D272CEE0E2B88 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DE66EC11E7CE7E443C1B04C5 /* AppKit.framework */,
+				836E7DD8B7BB025F8C6C9394 /* ApplicationServices.framework */,
+				A415C9FA9F4EE7F51148DB05 /* Carbon.framework */,
+				80D4E499116F0F70546EFC41 /* IOKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		C607A96CAF64709A17EC9C94 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				02339D1966C1944CD364D12B /* Preferences.swift */,
+				D7A0EF16900C9B5D53D5D613 /* SettingsWindowController.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		E71AA4240DD90FD27D96FD69 /* Safety */ = {
+			isa = PBXGroup;
+			children = (
+				3B1BE8FB45FD677BF13E4B44 /* SafetyManager.swift */,
+			);
+			path = Safety;
+			sourceTree = "<group>";
+		};
+		F5633739BA191651CCF42173 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				307BBF0E7701B1CB6E5DCB60 /* CleanLock.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F77820F048DE434D047CA41C /* Cleaning */ = {
+			isa = PBXGroup;
+			children = (
+				C69F474DE081BC7CC62A2231 /* CleaningModeManager.swift */,
+			);
+			path = Cleaning;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B4D5CD3CD4D3D7DF490A1DAB /* CleanLock */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DE54081FFA718347EC053B8B /* Build configuration list for PBXNativeTarget "CleanLock" */;
+			buildPhases = (
+				B748ABE649B4FB34375EF936 /* Sources */,
+				19D92239F3FC1DB5532B37DB /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CleanLock;
+			packageProductDependencies = (
+			);
+			productName = CleanLock;
+			productReference = 307BBF0E7701B1CB6E5DCB60 /* CleanLock.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2685506F8DA36E1DE72A8760 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					B4D5CD3CD4D3D7DF490A1DAB = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 91014B317A192F267CEA8558 /* Build configuration list for PBXProject "CleanLock" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 18D8298F49DDD9CE49513F27;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = F5633739BA191651CCF42173 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B4D5CD3CD4D3D7DF490A1DAB /* CleanLock */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B748ABE649B4FB34375EF936 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6537293CDBA76C8670F31CB2 /* AppDelegate.swift in Sources */,
+				533FAE15EACFB483D9D441FE /* CleaningModeManager.swift in Sources */,
+				6570C8428627B36A9BCAEDDE /* EventInterceptor.swift in Sources */,
+				9EE129C5BD1996FF8CB989A5 /* HotkeyManager.swift in Sources */,
+				F0E4E9969EE11E8017605C50 /* MenuBarController.swift in Sources */,
+				80486EF9EA843645BF2020A6 /* OverlayWindowController.swift in Sources */,
+				3035823E3029C4400B0A43B8 /* PermissionsManager.swift in Sources */,
+				8EC11E0255482D8ECC80C44C /* Preferences.swift in Sources */,
+				AF79DD60E2DA3FDD2EDDE7F0 /* SafetyManager.swift in Sources */,
+				BD7CABA17C8E29D8E61713EC /* SettingsWindowController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		418BB96147227B2B9D218FD4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = CleanLock/CleanLock.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = CleanLock/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cleanlock.app;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		6359DBF4196D065ACEED638E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = CleanLock;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = CleanLock;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		B51EC1242881DB6E91FC74B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = CleanLock/CleanLock.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = CleanLock/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cleanlock.app;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		F6930CCCCB523676D13D8935 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = CleanLock;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = CleanLock;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		91014B317A192F267CEA8558 /* Build configuration list for PBXProject "CleanLock" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6359DBF4196D065ACEED638E /* Debug */,
+				F6930CCCCB523676D13D8935 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DE54081FFA718347EC053B8B /* Build configuration list for PBXNativeTarget "CleanLock" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				418BB96147227B2B9D218FD4 /* Debug */,
+				B51EC1242881DB6E91FC74B8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2685506F8DA36E1DE72A8760 /* Project object */;
+}
