@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import os.log
 
 /// Global hotkey registered through Carbon's RegisterEventHotKey API — the
 /// supported native path for system-wide shortcuts on macOS. It works even
@@ -13,11 +14,20 @@ final class HotkeyManager {
     private var eventHandlerRef: EventHandlerRef?
     private let hotKeyID = EventHotKeyID(signature: OSType(0x434C4E4C /* 'CLNL' */), id: 1)
 
+    private let log = OSLog(subsystem: "com.cleanlock.app", category: "Hotkey")
+
     private init() {}
 
     func registerStoredHotkey() {
         let stored = Preferences.shared.hotkey
-        register(keyCode: stored.keyCode, modifiers: stored.carbonModifiers)
+        let ok = register(keyCode: stored.keyCode, modifiers: stored.carbonModifiers)
+        if !ok {
+            os_log("Failed to register stored hotkey (keyCode=%d, modifiers=0x%x)",
+                   log: log, type: .error, stored.keyCode, stored.carbonModifiers)
+        } else {
+            os_log("Registered hotkey (keyCode=%d, modifiers=0x%x)",
+                   log: log, type: .info, stored.keyCode, stored.carbonModifiers)
+        }
     }
 
     /// Replaces any existing registration. Returns true on success.
@@ -32,7 +42,7 @@ final class HotkeyManager {
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
 
         let installStatus = InstallEventHandler(
-            GetApplicationEventTarget(),
+            GetEventDispatcherTarget(),
             { _, eventRef, userData in
                 guard let eventRef = eventRef, let userData = userData else { return noErr }
                 var hkID = EventHotKeyID()
@@ -60,6 +70,7 @@ final class HotkeyManager {
         )
 
         guard installStatus == noErr else {
+            os_log("InstallEventHandler failed with status %d", log: log, type: .error, installStatus)
             return false
         }
 
@@ -67,10 +78,13 @@ final class HotkeyManager {
             keyCode,
             modifiers,
             hotKeyID,
-            GetApplicationEventTarget(),
+            GetEventDispatcherTarget(),
             0,
             &hotKeyRef
         )
+        if status != noErr {
+            os_log("RegisterEventHotKey failed with status %d", log: log, type: .error, status)
+        }
         return status == noErr
     }
 

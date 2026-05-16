@@ -2,6 +2,10 @@ import AppKit
 import Carbon.HIToolbox
 import ServiceManagement
 
+extension Notification.Name {
+    static let launchModeDidChange = Notification.Name("com.cleanlock.launchModeDidChange")
+}
+
 /// Persistent user preferences. Backed by UserDefaults.
 final class Preferences {
     static let shared = Preferences()
@@ -76,7 +80,10 @@ final class Preferences {
             }
             return .persistent
         }
-        set { defaults.set(newValue.rawValue, forKey: Key.launchMode) }
+        set {
+            defaults.set(newValue.rawValue, forKey: Key.launchMode)
+            NotificationCenter.default.post(name: .launchModeDidChange, object: nil)
+        }
     }
 
     var launchAtLogin: Bool {

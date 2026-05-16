@@ -1,4 +1,5 @@
 import AppKit
+import os.log
 
 final class MenuBarController: NSObject, NSMenuDelegate {
     private let statusItem: NSStatusItem
@@ -10,9 +11,16 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         super.init()
 
         if let button = statusItem.button {
-            let image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "CleanLock")
-            image?.isTemplate = true
-            button.image = image
+            if let image = NSImage(systemSymbolName: "keyboard", accessibilityDescription: "CleanLock") {
+                image.isTemplate = true
+                button.image = image
+            } else {
+                // Fallback: draw a simple text icon if the SF Symbol is unavailable.
+                button.title = "⌨"
+                os_log("SF Symbol 'keyboard' not available, using fallback text icon",
+                       log: OSLog(subsystem: "com.cleanlock.app", category: "MenuBar"),
+                       type: .default)
+            }
             button.toolTip = "CleanLock"
         }
 

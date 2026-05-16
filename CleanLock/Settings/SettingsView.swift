@@ -271,6 +271,10 @@ final class HotkeyRecorderField: NSTextField {
     override var acceptsFirstResponder: Bool { true }
     override var canBecomeKeyView: Bool { true }
 
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+    }
+
     override func becomeFirstResponder() -> Bool {
         recording = true
         stringValue = "Press shortcut…"

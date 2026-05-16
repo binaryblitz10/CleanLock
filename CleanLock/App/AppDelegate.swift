@@ -22,9 +22,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         safetyManager.installSignalHandlers()
         safetyManager.installLifecycleObservers()
 
-        if Preferences.shared.launchMode == .launcher {
+        // Always create the menu bar controller so the icon is visible
+        // regardless of startup mode. In launcher mode, the launcher window
+        // appears on top of the menu bar icon.
+        menuBarController = MenuBarController()
+
+        applyLaunchMode(Preferences.shared.launchMode)
+
+        // Observe launch mode changes so they apply immediately.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(launchModeDidChange),
+            name: .launchModeDidChange,
+            object: nil
+        )
+    }
+
+    @objc private func launchModeDidChange() {
+        applyLaunchMode(Preferences.shared.launchMode)
+    }
+
+    private func applyLaunchMode(_ mode: Preferences.LaunchMode) {
+        // Tear down launcher if it was active.
+        if mode != .launcher {
+            launcherWindowController?.hideLauncher()
+            launcherWindowController = nil
+        }
+
+        switch mode {
+        case .launcher:
             setupLauncherMode()
-        } else {
+        case .persistent:
             setupPersistentMode()
         }
     }
@@ -32,8 +60,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Persistent mode
 
     private func setupPersistentMode() {
-        menuBarController = MenuBarController()
-
         hotkeyManager.onTrigger = { [weak self] in
             self?.cleaningManager.toggle()
         }
@@ -48,6 +74,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Launcher mode
 
     private func setupLauncherMode() {
+        if launcherWindowController != nil { return }
+
         let launcher = LauncherWindowController()
 
         launcher.onStartCleaning = { [weak self] in
@@ -77,25 +105,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Settings
 
     private func openSettings() {
-        // Use the same settings path as the menu bar controller.
-        if let mbc = menuBarController {
-            mbc.openSettings()
-        } else {
-            // Launcher mode — create an ad-hoc settings controller.
-            let settingsWC = SettingsWindowController()
-            settingsWC.showWindow(nil)
-            // Keep alive by associating with the launcher.
-            objc_setAssociatedObject(
-                launcherWindowController as Any,
-                &settingsKey,
-                settingsWC,
-                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            )
-            NSApp.activate(ignoringOtherApps: true)
-        }
+        menuBarController?.openSettings()
     }
-
-    private var settingsKey: UInt8 = 0
 
     // MARK: - Termination
 
