@@ -48,6 +48,10 @@ final class OverlayWindowController {
             .disableAppleMenu,
         ]
 
+        // App must be active for CGDisplayHideCursor to take effect for an
+        // LSUIElement agent. Activate before showing and make the overlay key.
+        NSApp.activate(ignoringOtherApps: true)
+        w.makeKeyAndOrderFront(nil)
         w.orderFrontRegardless()
         window = w
     }

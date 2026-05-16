@@ -31,6 +31,7 @@ final class CleaningModeManager {
 
     private let interceptor = EventInterceptor()
     private let overlay = OverlayWindowController()
+    private let cursor = CursorHider()
     private var autoUnlockTimer: DispatchSourceTimer?
 
     private let log = OSLog(subsystem: "com.cleanlock.app", category: "CleaningMode")
@@ -85,6 +86,8 @@ final class CleaningModeManager {
             return
         }
 
+        cursor.hide()
+
         startAutoUnlockTimerIfNeeded()
 
         state = .active
@@ -119,6 +122,11 @@ final class CleaningModeManager {
         cancelAutoUnlockTimer()
         interceptor.uninstall()
         overlay.hide()
+        // Cursor restore must happen unconditionally on every teardown path:
+        // userUnlock, userToggle, willSleep, screenLocked, eventTapDisabled,
+        // timeout, permissionLost, appTermination, emergency. CursorHider is
+        // idempotent, so calling show() when not hidden is a no-op.
+        cursor.show()
     }
 
     private func startAutoUnlockTimerIfNeeded() {

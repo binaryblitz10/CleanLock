@@ -12,6 +12,7 @@
 		533FAE15EACFB483D9D441FE /* CleaningModeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C69F474DE081BC7CC62A2231 /* CleaningModeManager.swift */; };
 		6537293CDBA76C8670F31CB2 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88CB652B123929B95FD0FDFB /* AppDelegate.swift */; };
 		6570C8428627B36A9BCAEDDE /* EventInterceptor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6CB8B4BE366B4B18CF96EF /* EventInterceptor.swift */; };
+		6FB9DE44F0A0B04A7144347B /* CursorHider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92ACA57CAD2EBB22B47E0498 /* CursorHider.swift */; };
 		80486EF9EA843645BF2020A6 /* OverlayWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9D617CAAA6E033024EEE3F /* OverlayWindowController.swift */; };
 		8EC11E0255482D8ECC80C44C /* Preferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02339D1966C1944CD364D12B /* Preferences.swift */; };
 		9EE129C5BD1996FF8CB989A5 /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7E41C854E1040EBE512C520 /* HotkeyManager.swift */; };
@@ -32,6 +33,7 @@
 		836E7DD8B7BB025F8C6C9394 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = System/Library/Frameworks/ApplicationServices.framework; sourceTree = SDKROOT; };
 		88CB652B123929B95FD0FDFB /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		8C9D617CAAA6E033024EEE3F /* OverlayWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverlayWindowController.swift; sourceTree = "<group>"; };
+		92ACA57CAD2EBB22B47E0498 /* CursorHider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CursorHider.swift; sourceTree = "<group>"; };
 		A415C9FA9F4EE7F51148DB05 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
 		BBF40631DA82B1FBA5E766F3 /* MenuBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarController.swift; sourceTree = "<group>"; };
 		C69F474DE081BC7CC62A2231 /* CleaningModeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CleaningModeManager.swift; sourceTree = "<group>"; };
@@ -124,6 +126,7 @@
 		94B097AAA36C1598719C6FCB /* Overlay */ = {
 			isa = PBXGroup;
 			children = (
+				92ACA57CAD2EBB22B47E0498 /* CursorHider.swift */,
 				8C9D617CAAA6E033024EEE3F /* OverlayWindowController.swift */,
 			);
 			path = Overlay;
@@ -235,6 +238,7 @@
 			files = (
 				6537293CDBA76C8670F31CB2 /* AppDelegate.swift in Sources */,
 				533FAE15EACFB483D9D441FE /* CleaningModeManager.swift in Sources */,
+				6FB9DE44F0A0B04A7144347B /* CursorHider.swift in Sources */,
 				6570C8428627B36A9BCAEDDE /* EventInterceptor.swift in Sources */,
 				9EE129C5BD1996FF8CB989A5 /* HotkeyManager.swift in Sources */,
 				F0E4E9969EE11E8017605C50 /* MenuBarController.swift in Sources */,

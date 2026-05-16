@@ -20,6 +20,13 @@ final class EventInterceptor {
     private var lastCommandPressTime: TimeInterval = 0
     private var commandCurrentlyDown: Bool = false
 
+    // Re-enable storm detector: if the kernel keeps disabling the tap many
+    // times in quick succession, something is genuinely wrong (e.g. our
+    // callback is taking too long) and we should bail out rather than spin.
+    private var recentReenables: [TimeInterval] = []
+    private let reenableStormLimit: Int = 8
+    private let reenableStormWindow: TimeInterval = 2.0
+
     private let unlockRequiredCount: Int = 6
     private let unlockResetInterval: TimeInterval = 3.0
 
@@ -87,14 +94,20 @@ final class EventInterceptor {
     }
 
     private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // System told us the tap is disabled — recover by signaling deactivate.
+        // The kernel disables our tap for two reasons:
+        //   - kCGEventTapDisabledByTimeout: callback was too slow.
+        //   - kCGEventTapDisabledByUserInput: a flood of HID events was detected
+        //     (this fires often while a user is wiping a keyboard — the exact
+        //     scenario CleanLock exists for).
+        // Both are recoverable: re-enable the tap and continue. We bail out
+        // only if re-enabling fails repeatedly within a short window.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            os_log("Event tap disabled (%{public}d) — bailing out",
-                   log: log, type: .error, type.rawValue)
-            DispatchQueue.main.async { [weak self] in
-                self?.onTapDisabled?()
+            os_log("Event tap auto-disabled (%{public}d) — re-enabling",
+                   log: log, type: .info, type.rawValue)
+            if let port = tap {
+                CGEvent.tapEnable(tap: port, enable: true)
             }
-            // Don't return the event; system will route normally after we're gone.
+            recordTapReenable()
             return nil
         }
 
@@ -145,6 +158,21 @@ final class EventInterceptor {
             commandPressCount = 0
             DispatchQueue.main.async { [weak self] in
                 self?.onUnlockRequested?()
+            }
+        }
+    }
+
+    private func recordTapReenable() {
+        let now = Date().timeIntervalSinceReferenceDate
+        recentReenables.append(now)
+        recentReenables.removeAll { now - $0 > reenableStormWindow }
+        if recentReenables.count >= reenableStormLimit {
+            os_log("Tap re-enable storm (%{public}d in %{public}.1fs) — bailing out",
+                   log: log, type: .error,
+                   recentReenables.count, reenableStormWindow)
+            recentReenables.removeAll()
+            DispatchQueue.main.async { [weak self] in
+                self?.onTapDisabled?()
             }
         }
     }
