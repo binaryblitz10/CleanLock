@@ -90,7 +90,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         alert.informativeText = """
         Temporarily disables your keyboard and trackpad so you can clean them.
 
-        Press Command (⌘) six times to exit cleaning mode.
+        Hold both Command (⌘) keys for 3 seconds to exit cleaning mode.
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")

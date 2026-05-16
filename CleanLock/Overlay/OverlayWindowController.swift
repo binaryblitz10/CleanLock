@@ -116,7 +116,7 @@ private final class OverlayContentView: NSView {
         subtitleStyle.alignment = .center
         subtitleStyle.lineSpacing = 6
 
-        let subtitleString = "Your keyboard and mouse are disabled.\nPress the Command (⌘) key 6 times to exit."
+        let subtitleString = "Your keyboard and mouse are disabled.\nHold both ⌘ keys for 3 seconds to exit."
         subtitleField.attributedStringValue = NSAttributedString(
             string: subtitleString,
             attributes: [

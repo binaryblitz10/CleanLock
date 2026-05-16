@@ -3,10 +3,10 @@ import CoreGraphics
 import os.log
 
 /// Quartz event tap that consumes keyboard, mouse, trackpad, and system-defined
-/// (media key) events while cleaning mode is active. Counts discrete Command
-/// presses for the unlock sequence.
+/// (media key) events while cleaning mode is active. Requires a 3-second
+/// simultaneous hold of both left and right Command keys to unlock.
 final class EventInterceptor {
-    /// Called on main when the user completes the 6× Command unlock.
+    /// Called on main when the user completes the dual-Command 3-second hold.
     var onUnlockRequested: (() -> Void)?
 
     /// Called on main if the event tap is invalidated (timeout, user input
@@ -16,19 +16,28 @@ final class EventInterceptor {
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
-    private var commandPressCount: Int = 0
-    private var lastCommandPressTime: TimeInterval = 0
-    private var commandCurrentlyDown: Bool = false
+    // MARK: - Dual-Command hold state
 
-    // Re-enable storm detector: if the kernel keeps disabling the tap many
-    // times in quick succession, something is genuinely wrong (e.g. our
-    // callback is taking too long) and we should bail out rather than spin.
+    /// NX device flag bits — these appear in the low word of CGEventFlags.rawValue.
+    private static let leftCommandBit: UInt64  = 0x00000008  // NX_DEVICELCMDKEYMASK
+    private static let rightCommandBit: UInt64 = 0x00000010  // NX_DEVICERCMDKEYMASK
+    /// Every NX modifier bit other than the two Command bits.
+    private static let otherModifierBits: UInt64 = 0x000008E7  // L/R Ctrl, Shift, Opt + Fn
+
+    private var leftCommandDown = false
+    private var rightCommandDown = false
+    private var otherModifiersActive = false
+    private var otherKeysDown = 0
+
+    /// One-shot timer that fires after the 3-second uninterrupted hold.
+    private var holdTimer: DispatchSourceTimer?
+    private let unlockHoldDuration: TimeInterval = 3.0
+
+    // MARK: - Re-enable storm detector
+
     private var recentReenables: [TimeInterval] = []
     private let reenableStormLimit: Int = 8
     private let reenableStormWindow: TimeInterval = 2.0
-
-    private let unlockRequiredCount: Int = 6
-    private let unlockResetInterval: TimeInterval = 3.0
 
     private let log = OSLog(subsystem: "com.cleanlock.app", category: "EventTap")
 
@@ -40,12 +49,8 @@ final class EventInterceptor {
         precondition(Thread.isMainThread)
         if tap != nil { return true }
 
-        resetUnlockCounter()
+        resetUnlockState()
 
-        // Capture every event type; we make per-event filtering decisions in
-        // the callback. Using all-events is simpler and well-supported, and
-        // avoids the maintenance burden of an explicit mask that may miss
-        // future event types.
         let mask = CGEventMask(UInt64.max)
 
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
@@ -78,11 +83,10 @@ final class EventInterceptor {
         if let source = runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
         }
-        // Invalidate the mach port so the kernel side releases it promptly.
         CFMachPortInvalidate(port)
         tap = nil
         runLoopSource = nil
-        resetUnlockCounter()
+        resetUnlockState()
     }
 
     // MARK: - Callback (C-style)
@@ -94,32 +98,38 @@ final class EventInterceptor {
     }
 
     private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // The kernel disables our tap for two reasons:
-        //   - kCGEventTapDisabledByTimeout: callback was too slow.
-        //   - kCGEventTapDisabledByUserInput: a flood of HID events was detected
-        //     (this fires often while a user is wiping a keyboard — the exact
-        //     scenario CleanLock exists for).
-        // Both are recoverable: re-enable the tap and continue. We bail out
-        // only if re-enabling fails repeatedly within a short window.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             os_log("Event tap auto-disabled (%{public}d) — re-enabling",
                    log: log, type: .info, type.rawValue)
             if let port = tap {
                 CGEvent.tapEnable(tap: port, enable: true)
             }
+            // Tap disable invalidates our state: we may have missed modifier
+            // transitions during the gap. Cancel any in-progress unlock.
+            resetUnlockState()
             recordTapReenable()
             return nil
         }
 
-        // Detect a fresh Command-key press (transition into Cmd-down).
+        // Modifier-key changes track left/right Command independently.
         if type == .flagsChanged {
             handleFlagsChanged(event: event)
             return nil
         }
 
-        switch type {
-        case .keyDown, .keyUp:
+        // Any non-modifier key press immediately cancels the hold.
+        if type == .keyDown {
+            otherKeysDown += 1
+            cancelHoldTimer()
             return nil
+        }
+        if type == .keyUp {
+            if otherKeysDown > 0 { otherKeysDown -= 1 }
+            evaluateHoldCondition()
+            return nil
+        }
+
+        switch type {
         case .leftMouseDown, .leftMouseUp,
              .rightMouseDown, .rightMouseUp,
              .otherMouseDown, .otherMouseUp,
@@ -128,39 +138,68 @@ final class EventInterceptor {
              .scrollWheel:
             return nil
         default:
-            // Includes systemDefined (media keys), tabletPointer, tabletProximity, etc.
-            // Swallow everything. The kCGHIDEventTap level intercepts before
-            // most system shortcuts can be acted upon.
             return nil
         }
     }
 
-    // MARK: - Command-key unlock detection
+    // MARK: - Dual-Command hold unlock detection
 
     private func handleFlagsChanged(event: CGEvent) {
-        let flags = event.flags
-        let cmdDown = flags.contains(.maskCommand)
+        let rawFlags = event.flags.rawValue
 
-        // Only react on a fresh down-transition (filters key-repeat / hold).
-        let wasDown = commandCurrentlyDown
-        commandCurrentlyDown = cmdDown
+        leftCommandDown  = (rawFlags & Self.leftCommandBit)  != 0
+        rightCommandDown = (rawFlags & Self.rightCommandBit) != 0
+        otherModifiersActive = (rawFlags & Self.otherModifierBits) != 0
 
-        guard cmdDown && !wasDown else { return }
+        evaluateHoldCondition()
+    }
 
-        let now = Date().timeIntervalSinceReferenceDate
-        if now - lastCommandPressTime > unlockResetInterval {
-            commandPressCount = 0
-        }
-        lastCommandPressTime = now
-        commandPressCount += 1
+    private func evaluateHoldCondition() {
+        let canHold = leftCommandDown
+            && rightCommandDown
+            && !otherModifiersActive
+            && otherKeysDown == 0
 
-        if commandPressCount >= unlockRequiredCount {
-            commandPressCount = 0
-            DispatchQueue.main.async { [weak self] in
-                self?.onUnlockRequested?()
-            }
+        if canHold {
+            startHoldTimerIfNeeded()
+        } else {
+            cancelHoldTimer()
         }
     }
+
+    private func startHoldTimerIfNeeded() {
+        guard holdTimer == nil else { return }
+
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + unlockHoldDuration)
+        timer.setEventHandler { [weak self] in
+            self?.holdTimerFired()
+        }
+        holdTimer = timer
+        timer.resume()
+    }
+
+    private func cancelHoldTimer() {
+        holdTimer?.cancel()
+        holdTimer = nil
+    }
+
+    private func holdTimerFired() {
+        holdTimer = nil
+        // Re-verify state at fire time: both Commands must still be down with
+        // no other keys or modifiers active. If the user released between the
+        // timer firing and this block executing (vanishingly unlikely on main
+        // queue), the guard prevents a stale unlock.
+        guard leftCommandDown && rightCommandDown
+                && !otherModifiersActive && otherKeysDown == 0 else { return }
+
+        resetUnlockState()
+        DispatchQueue.main.async { [weak self] in
+            self?.onUnlockRequested?()
+        }
+    }
+
+    // MARK: - Storm detection
 
     private func recordTapReenable() {
         let now = Date().timeIntervalSinceReferenceDate
@@ -177,9 +216,13 @@ final class EventInterceptor {
         }
     }
 
-    private func resetUnlockCounter() {
-        commandPressCount = 0
-        commandCurrentlyDown = false
-        lastCommandPressTime = 0
+    // MARK: - State reset
+
+    private func resetUnlockState() {
+        cancelHoldTimer()
+        leftCommandDown = false
+        rightCommandDown = false
+        otherModifiersActive = false
+        otherKeysDown = 0
     }
 }

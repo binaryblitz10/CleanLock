@@ -15,7 +15,7 @@ final class CleaningModeManager {
     }
 
     enum DeactivateReason {
-        case userUnlock          // 6× Command
+        case userUnlock          // dual-⌘ 3s hold
         case userToggle          // menu / hotkey
         case willSleep
         case screenLocked
