@@ -45,6 +45,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             keyEquivalent: ","
         )
         settingsItem.target = self
+        // Don't set image at all to avoid any icon or spacing
         menu.addItem(settingsItem)
 
         let aboutItem = NSMenuItem(
@@ -53,6 +54,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             keyEquivalent: ""
         )
         aboutItem.target = self
+        // Ensure no icon
         menu.addItem(aboutItem)
 
         menu.addItem(.separator())
@@ -63,6 +65,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             keyEquivalent: "q"
         )
         quitItem.target = self
+        // Ensure no icon
         menu.addItem(quitItem)
 
         statusItem.menu = menu

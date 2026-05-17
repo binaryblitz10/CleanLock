@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // appears on top of the menu bar icon.
         menuBarController = MenuBarController()
 
-        applyLaunchMode(Preferences.shared.launchMode)
+        applyLaunchMode(Preferences.shared.launchMode, fromSettings: false)
 
         // Observe launch mode changes so they apply immediately.
         NotificationCenter.default.addObserver(
@@ -39,10 +39,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func launchModeDidChange() {
-        applyLaunchMode(Preferences.shared.launchMode)
+        applyLaunchMode(Preferences.shared.launchMode, fromSettings: true)
     }
 
-    private func applyLaunchMode(_ mode: Preferences.LaunchMode) {
+    private func applyLaunchMode(_ mode: Preferences.LaunchMode, fromSettings: Bool = false) {
         // Tear down launcher if it was active.
         if mode != .launcher {
             launcherWindowController?.hideLauncher()
@@ -51,7 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         switch mode {
         case .launcher:
-            setupLauncherMode()
+            setupLauncherMode(showImmediately: !fromSettings)
         case .persistent:
             setupPersistentMode()
         }
@@ -73,7 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Launcher mode
 
-    private func setupLauncherMode() {
+    private func setupLauncherMode(showImmediately: Bool = true) {
         if launcherWindowController != nil { return }
 
         let launcher = LauncherWindowController()
@@ -93,12 +93,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.openSettings()
         }
 
-        launcher.showLauncher()
         launcherWindowController = launcher
 
         cleaningManager.onDeactivated = { [weak self] in
-            // Return to launcher window after cleaning.
             self?.launcherWindowController?.showLauncher()
+        }
+
+        if showImmediately {
+            cleaningManager.activate()
         }
     }
 

@@ -17,12 +17,12 @@ final class SettingsViewModel: ObservableObject {
 
     init() {
         let prefs = Preferences.shared
-        self.launchMode = prefs.launchMode
-        self.autoUnlockSeconds = prefs.autoUnlockSeconds
-        self.hotkeyKeyCode = prefs.hotkey.keyCode
-        self.hotkeyModifiers = prefs.hotkey.carbonModifiers
-        self.launchAtLogin = prefs.launchAtLogin
-        self.hasAccessibility = PermissionsManager.shared.hasAccessibility()
+        launchMode = prefs.launchMode
+        autoUnlockSeconds = prefs.autoUnlockSeconds
+        hotkeyKeyCode = prefs.hotkey.keyCode
+        hotkeyModifiers = prefs.hotkey.carbonModifiers
+        launchAtLogin = prefs.launchAtLogin
+        hasAccessibility = PermissionsManager.shared.hasAccessibility()
 
         $launchMode
             .dropFirst()
@@ -69,87 +69,74 @@ struct SettingsView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 14) {
-            // ── General section ──
-            sectionHeader("General")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 28) {
+                // ── Startup Behavior ──
+                sectionHeader(
+                    title: "Startup Behavior",
+                    subtitle: "Choose how CleanLock starts when you log in."
+                )
 
-            GroupBox {
-                VStack(spacing: 10) {
-                    // Startup Behavior
-                    settingRow(leading: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Startup Behavior")
-                                .font(.system(size: 12, weight: .medium))
-                            Text(modeSubtitle)
-                                .font(.system(size: 10))
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }, trailing: {
-                        Picker("", selection: $model.launchMode) {
-                            Text("Menu Bar").tag(Preferences.LaunchMode.persistent)
-                            Text("Launcher").tag(Preferences.LaunchMode.launcher)
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(width: 180)
-                    })
-                    .padding(.bottom, 2)
+                HStack(spacing: 12) {
+                    ModeCard(
+                        title: "Menu Bar",
+                        description: "Runs in the menu bar. Activate anytime with the shortcut.",
+                        iconName: "menubar.rectangle",
+                        isSelected: model.launchMode == .persistent,
+                        action: { model.launchMode = .persistent }
+                    )
+                    ModeCard(
+                        title: "Launcher",
+                        description: "Opens the app window at login. You can close it while it runs in the background.",
+                        iconName: "macwindow",
+                        isSelected: model.launchMode == .launcher,
+                        action: { model.launchMode = .launcher }
+                    )
+                }
+                .padding(.horizontal, 4)
 
-                    Divider()
-
-                    // Activation Shortcut
-                    settingRow(leading: {
-                        Text("Activation Shortcut")
-                            .font(.system(size: 12))
-                    }, trailing: {
+                // ── Rows ──
+                VStack(spacing: 0) {
+                    rowItem(label: "Activation Shortcut") {
                         HotkeyRecorderView(
                             keyCode: $model.hotkeyKeyCode,
                             modifiers: $model.hotkeyModifiers
                         )
-                    })
+                        .frame(width: 140, height: 30)
+                    }
 
-                    Divider()
+                    Divider().padding(.vertical, 10)
 
-                    // Auto Unlock
-                    settingRow(leading: {
-                        Text("Auto Unlock")
-                            .font(.system(size: 12))
-                    }, trailing: {
+                    rowItem(label: "Auto Unlock") {
                         Picker("", selection: $model.autoUnlockSeconds) {
                             ForEach(timeoutOptions, id: \.seconds) { opt in
                                 Text(opt.label).tag(opt.seconds)
                             }
                         }
+                        .labelsHidden()
                         .frame(width: 120)
-                    })
+                    }
 
-                    Divider()
+                    Divider().padding(.vertical, 10)
 
-                    // Launch at Login
-                    settingRow(leading: {
-                        Text("Launch at Login")
-                            .font(.system(size: 12))
-                    }, trailing: {
+                    rowItem(label: "Launch at Login") {
                         Toggle("", isOn: $model.launchAtLogin)
+                            .labelsHidden()
                             .disabled(model.launchMode == .launcher)
                             .toggleStyle(.switch)
                             .controlSize(.small)
-                    })
+                    }
                 }
-                .padding(12)
-            }
-            .groupBoxStyle(CardGroupBoxStyle())
 
-            // ── Permissions section ──
-            sectionHeader("Permissions")
+                // ── Permissions ──
+                sectionHeader(title: "Permissions", subtitle: nil)
 
-            GroupBox {
                 HStack {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text("Accessibility")
-                            .font(.system(size: 12, weight: .medium))
-                        Text("Required for keyboard and mouse control")
-                            .font(.system(size: 10))
+                            .font(.system(size: 13, weight: .regular))
+                        Text("Required for keyboard and mouse control.")
+                            .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
 
@@ -157,70 +144,153 @@ struct SettingsView: View {
 
                     if model.hasAccessibility {
                         Label("Granted", systemImage: "checkmark.circle.fill")
-                            .font(.system(size: 11))
+                            .font(.system(size: 12))
                             .foregroundStyle(.green)
                     } else {
-                        Button("Grant Access…") {
+                        Button("Grant Access\u{2026}") {
                             PermissionsManager.shared.openAccessibilitySettings()
                         }
                         .controlSize(.small)
                     }
                 }
-                .padding(12)
             }
-            .groupBoxStyle(CardGroupBoxStyle())
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(16)
-        .frame(width: 400)
+        .frame(width: 480)
     }
 
     // MARK: - Helpers
 
-    private func sectionHeader(_ text: String) -> some View {
-        HStack {
-            Text(text)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-            Spacer()
+    private func sectionHeader(title: String, subtitle: String?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.system(size: 17, weight: .semibold))
+            if let subtitle {
+                Text(subtitle)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
-    private func settingRow<Leading: View, Trailing: View>(
-        @ViewBuilder leading: () -> Leading,
+    private func rowItem<Trailing: View>(
+        label: String,
         @ViewBuilder trailing: () -> Trailing
     ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            leading()
+        HStack {
+            Text(label)
+                .font(.system(size: 13, weight: .regular))
             Spacer()
             trailing()
-        }
-        .padding(.vertical, 1)
-    }
-
-    private var modeSubtitle: String {
-        switch model.launchMode {
-        case .persistent:
-            return "Runs in the menu bar. Activate anytime with the shortcut."
-        case .launcher:
-            return "Shows a launcher window on startup and after cleaning."
         }
     }
 }
 
-// MARK: - Card GroupBox Style
+// MARK: - Mode Selection Card
 
-private struct CardGroupBoxStyle: GroupBoxStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.content
+private struct ModeCard: View {
+    let title: String
+    let description: String
+    let iconName: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Icon area
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(iconBackgroundColor)
+                        .frame(height: 108)
+
+                    Image(systemName: iconName)
+                        .font(.system(size: 36, weight: .regular))
+                        .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                }
+                .overlay(alignment: .topTrailing) {
+                    selectionIndicator
+                        .padding(10)
+                }
+
+                // Title + description
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .multilineTextAlignment(.leading)
+                }
+                .padding(.horizontal, 13)
+                .padding(.top, 11)
+                .padding(.bottom, 13)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
             .background {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(.quaternary.opacity(0.35))
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(cardBackgroundColor)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(.separator, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(cardBorderColor, lineWidth: isSelected ? 1.5 : 0.5)
             }
+        }
+        .buttonStyle(.plain)
+        .focusable(false)
+        .onHover { hovering in
+            withAnimation(.easeOut(duration: 0.15)) {
+                isHovering = hovering
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: isSelected)
+    }
+
+    private var selectionIndicator: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(
+                    isSelected ? Color.clear : Color.secondary.opacity(0.5),
+                    lineWidth: 1.5
+                )
+                .background(
+                    Circle().fill(isSelected ? Color.accentColor : Color.clear)
+                )
+                .frame(width: 20, height: 20)
+
+            if isSelected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        }
+    }
+
+    private var iconBackgroundColor: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.85)
+        }
+        return Color(nsColor: .quaternaryLabelColor).opacity(isHovering ? 0.18 : 0.12)
+    }
+
+    private var cardBackgroundColor: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.12)
+        }
+        return Color(nsColor: .quaternaryLabelColor).opacity(isHovering ? 0.12 : 0.06)
+    }
+
+    private var cardBorderColor: Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.6)
+        }
+        return Color(nsColor: .separatorColor).opacity(0.6)
     }
 }
 
@@ -230,7 +300,7 @@ struct HotkeyRecorderView: NSViewRepresentable {
     @Binding var keyCode: UInt32
     @Binding var modifiers: UInt32
 
-    func makeNSView(context: Context) -> HotkeyRecorderField {
+    func makeNSView(context _: Context) -> HotkeyRecorderField {
         let field = HotkeyRecorderField()
         field.onChange = { kc, mods in
             keyCode = kc
@@ -239,58 +309,163 @@ struct HotkeyRecorderView: NSViewRepresentable {
         return field
     }
 
-    func updateNSView(_ nsView: HotkeyRecorderField, context: Context) {
+    func updateNSView(_ nsView: HotkeyRecorderField, context _: Context) {
         nsView.set(keyCode: keyCode, modifiers: modifiers)
     }
 
-    func sizeThatFits(_ proposal: ProposedViewSize, nsView: HotkeyRecorderField, context: Context) -> CGSize {
-        CGSize(width: 150, height: 22)
+    func sizeThatFits(_: ProposedViewSize, nsView _: HotkeyRecorderField, context _: Context) -> CGSize {
+        CGSize(width: 140, height: 30)
     }
 }
 
 // MARK: - AppKit Hotkey Recorder Field
 
-final class HotkeyRecorderField: NSTextField {
+final class HotkeyRecorderField: NSView {
     var onChange: ((UInt32, UInt32) -> Void)?
-    private var keyCode: UInt32 = 0
-    private var modifiers: UInt32 = 0
-    private var recording = false
 
-    init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 150, height: 22))
-        isEditable = false
-        isSelectable = false
-        alignment = .center
-        font = .monospacedSystemFont(ofSize: 12, weight: .regular)
-        focusRingType = .default
-        refreshTitle()
+    private var currentKeyCode: UInt32 = 0
+    private var currentModifiers: UInt32 = 0
+    private var recording = false
+    private var hasShortcut: Bool {
+        currentKeyCode != 0
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    // Subviews
+    private let backgroundView = NSView()
+    private let textField: NSTextField = {
+        let field = NSTextField(labelWithString: "")
+        field.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+        field.alignment = .center
+        field.textColor = .labelColor
+        field.backgroundColor = .clear
+        field.isBezeled = false
+        field.drawsBackground = false
+        field.lineBreakMode = .byClipping
+        return field
+    }()
 
-    override var acceptsFirstResponder: Bool { true }
-    override var canBecomeKeyView: Bool { true }
+    private let clearButton: NSButton = {
+        let button = NSButton(title: "", target: nil, action: nil)
+        button.bezelStyle = .shadowlessSquare
+        button.isBordered = false
+        button.wantsLayer = true
+        button.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Clear shortcut")
+        button.image?.isTemplate = true
+        button.alphaValue = 0
+        button.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+        return button
+    }()
+
+    // Tracking
+    private var trackingArea: NSTrackingArea?
+    private var isHovering = false
+
+    // Constants
+    private let cornerRadius: CGFloat = 8
+    private let clearButtonSize: CGFloat = 20
+    private let clearButtonTrailingMargin: CGFloat = 10
+    private let horizontalTextPadding: CGFloat = 14
+
+    init() {
+        super.init(frame: NSRect(x: 0, y: 0, width: 140, height: 30))
+
+        // Background
+        backgroundView.wantsLayer = true
+        backgroundView.layer?.cornerRadius = cornerRadius
+        backgroundView.layer?.cornerCurve = .continuous
+        backgroundView.layer?.backgroundColor = recorderBackgroundColor
+        backgroundView.layer?.borderColor = NSColor.separatorColor.cgColor
+        backgroundView.layer?.borderWidth = 0.5
+        addSubview(backgroundView)
+
+        // Text field
+        textField.alignment = .center
+        addSubview(textField)
+
+        // Clear button
+        clearButton.target = self
+        clearButton.action = #selector(clearShortcut)
+        addSubview(clearButton)
+
+        refreshDisplay()
+        updateTrackingAreas()
+    }
+
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        fatalError()
+    }
+
+    deinit {
+        if let area = trackingArea {
+            removeTrackingArea(area)
+        }
+    }
+
+    // MARK: - Tracking
+
+    override func updateTrackingAreas() {
+        if let area = trackingArea {
+            removeTrackingArea(area)
+        }
+        trackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .mouseMoved],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea!)
+    }
+
+    override func mouseEntered(with _: NSEvent) {
+        isHovering = true
+        updateHoverState()
+    }
+
+    override func mouseExited(with _: NSEvent) {
+        isHovering = false
+        updateHoverState()
+    }
+
+    // MARK: - Responder
+
+    override var acceptsFirstResponder: Bool {
+        true
+    }
+
+    override var canBecomeKeyView: Bool {
+        true
+    }
 
     override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if hasShortcut, clearButton.frame.contains(point) {
+            return // Let the button handle it
+        }
         window?.makeFirstResponder(self)
     }
 
     override func becomeFirstResponder() -> Bool {
         recording = true
-        stringValue = "Press shortcut…"
+        textField.attributedStringValue = Self.placeholderString("Press shortcut\u{2026}")
+        updateBackgroundStyle(isActive: true)
+        needsLayout = true
         return super.becomeFirstResponder()
     }
 
     override func resignFirstResponder() -> Bool {
         recording = false
-        refreshTitle()
+        refreshDisplay()
+        updateBackgroundStyle(isActive: false)
         return super.resignFirstResponder()
     }
 
+    // MARK: - Public API
+
     func set(keyCode: UInt32, modifiers: UInt32) {
-        self.keyCode = keyCode
-        self.modifiers = modifiers
-        refreshTitle()
+        currentKeyCode = keyCode
+        currentModifiers = modifiers
+        refreshDisplay()
     }
 
     override func keyDown(with event: NSEvent) {
@@ -302,41 +477,139 @@ final class HotkeyRecorderField: NSTextField {
             return
         }
 
-        let carbonMods = HotkeyRecorderField.carbonModifiers(from: event.modifierFlags)
+        let carbonMods = Self.carbonModifiers(from: event.modifierFlags)
         guard carbonMods != 0 else { return }
 
-        keyCode = kc
-        modifiers = carbonMods
-        refreshTitle()
-        onChange?(keyCode, modifiers)
+        currentKeyCode = kc
+        currentModifiers = carbonMods
+        refreshDisplay()
+        onChange?(currentKeyCode, currentModifiers)
         window?.makeFirstResponder(nil)
     }
 
-    private func refreshTitle() {
-        if keyCode == 0 {
-            stringValue = "Click to set"
-            return
-        }
-        stringValue = HotkeyRecorderField.describe(keyCode: keyCode, modifiers: modifiers)
+    // MARK: - Layout
+
+    override func layout() {
+        super.layout()
+        let rect = bounds
+
+        backgroundView.frame = rect
+
+        // Clear button — centered vertically
+        let cbY = (rect.height - clearButtonSize) / 2
+        clearButton.frame = NSRect(
+            x: rect.maxX - clearButtonSize - clearButtonTrailingMargin,
+            y: cbY,
+            width: clearButtonSize,
+            height: clearButtonSize
+        )
+
+        // Text field — horizontally padded, vertically centered
+        let textRight = hasShortcut ? clearButton.frame.minX - 6 : rect.maxX - horizontalTextPadding
+        let textWidth = max(0, textRight - (rect.minX + horizontalTextPadding))
+        let intrinsicH = textField.intrinsicContentSize.height
+        let textY = (rect.height - intrinsicH) / 2
+        textField.frame = NSRect(
+            x: rect.minX + horizontalTextPadding,
+            y: textY,
+            width: textWidth,
+            height: intrinsicH
+        )
+
+        updateTrackingAreas()
     }
+
+    // MARK: - Private
+
+    @objc private func clearShortcut() {
+        currentKeyCode = 0
+        currentModifiers = 0
+        refreshDisplay()
+        onChange?(0, 0)
+    }
+
+    private func refreshDisplay() {
+        if hasShortcut {
+            let shortcutText = Self.describe(keyCode: currentKeyCode, modifiers: currentModifiers)
+            textField.attributedStringValue = Self.shortcutString(shortcutText)
+            clearButton.alphaValue = isHovering ? 0.8 : 0.5
+        } else {
+            textField.attributedStringValue = Self.placeholderString("Click to set")
+            clearButton.alphaValue = 0
+        }
+        needsLayout = true
+    }
+
+    private static func shortcutString(_ text: String) -> NSAttributedString {
+        NSAttributedString(string: text, attributes: [
+            .font: NSFont.systemFont(ofSize: 15, weight: .regular),
+            .kern: 2.0,
+            .foregroundColor: NSColor.labelColor,
+        ])
+    }
+
+    private static func placeholderString(_ text: String) -> NSAttributedString {
+        NSAttributedString(string: text, attributes: [
+            .font: NSFont.systemFont(ofSize: 12, weight: .regular),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ])
+    }
+
+    private func updateHoverState() {
+        if hasShortcut {
+            clearButton.alphaValue = isHovering ? 0.8 : 0.5
+        }
+        if !recording {
+            backgroundView.layer?.backgroundColor = isHovering ? recorderHoverBackgroundColor : recorderBackgroundColor
+        }
+    }
+
+    private func updateBackgroundStyle(isActive: Bool) {
+        backgroundView.layer?.backgroundColor = isActive ? recorderActiveBackgroundColor : recorderBackgroundColor
+    }
+
+    // MARK: - Colors (appearance-aware)
+
+    private var recorderBackgroundColor: CGColor {
+        if effectiveAppearance.isDarkMode {
+            return NSColor(white: 0.15, alpha: 1.0).cgColor
+        }
+        return NSColor(white: 0.98, alpha: 1.0).cgColor
+    }
+
+    private var recorderHoverBackgroundColor: CGColor {
+        if effectiveAppearance.isDarkMode {
+            return NSColor(white: 0.18, alpha: 1.0).cgColor
+        }
+        return NSColor(white: 0.95, alpha: 1.0).cgColor
+    }
+
+    private var recorderActiveBackgroundColor: CGColor {
+        if effectiveAppearance.isDarkMode {
+            return NSColor(white: 0.20, alpha: 1.0).cgColor
+        }
+        return NSColor(white: 0.93, alpha: 1.0).cgColor
+    }
+
+    // MARK: - Static Helpers
 
     private static func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
         var m: UInt32 = 0
         if flags.contains(.command) { m |= UInt32(cmdKey) }
-        if flags.contains(.shift)   { m |= UInt32(shiftKey) }
-        if flags.contains(.option)  { m |= UInt32(optionKey) }
+        if flags.contains(.shift) { m |= UInt32(shiftKey) }
+        if flags.contains(.option) { m |= UInt32(optionKey) }
         if flags.contains(.control) { m |= UInt32(controlKey) }
         return m
     }
 
     static func describe(keyCode: UInt32, modifiers: UInt32) -> String {
-        var s = ""
-        if modifiers & UInt32(controlKey) != 0 { s += "^" }
-        if modifiers & UInt32(optionKey)  != 0 { s += "\u{2325}" }
-        if modifiers & UInt32(shiftKey)   != 0 { s += "\u{21E7}" }
-        if modifiers & UInt32(cmdKey)     != 0 { s += "\u{2318}" }
-        s += keyCodeName(keyCode)
-        return s
+        var parts: [String] = []
+        if modifiers & UInt32(controlKey) != 0 { parts.append("\u{2303}") }
+        if modifiers & UInt32(optionKey) != 0 { parts.append("\u{2325}") }
+        if modifiers & UInt32(shiftKey) != 0 { parts.append("\u{21E7}") }
+        if modifiers & UInt32(cmdKey) != 0 { parts.append("\u{2318}") }
+        parts.append(keyCodeName(keyCode))
+        return parts.joined(separator: "")
     }
 
     private static func keyCodeName(_ kc: UInt32) -> String {
@@ -372,6 +645,17 @@ final class HotkeyRecorderField: NSTextField {
     }
 }
 
+// MARK: - Dark mode helper
+
+private extension NSAppearance {
+    var isDarkMode: Bool {
+        if #available(macOS 10.14, *) {
+            return name == .darkAqua || name == .vibrantDark
+        }
+        return false
+    }
+}
+
 // MARK: - Settings Window Controller
 
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
@@ -381,9 +665,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let model = SettingsViewModel()
         let hostingView = NSHostingView(rootView: SettingsView(model: model))
         hostingView.translatesAutoresizingMaskIntoConstraints = false
+        hostingView.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        hostingView.setContentCompressionResistancePriority(.defaultHigh, for: .vertical)
+
+        // Calculate ideal height from content
+        let contentHeight: CGFloat = 540
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 360),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: contentHeight),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -412,7 +701,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.delegate = self
     }
 
-    func windowWillClose(_ notification: Notification) {
+    func windowWillClose(_: Notification) {
         model?.refreshAccessibility()
     }
 }

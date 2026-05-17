@@ -20,6 +20,14 @@ final class HotkeyManager {
 
     func registerStoredHotkey() {
         let stored = Preferences.shared.hotkey
+
+        // Don't register if no keyCode is set (avoids accessibility prompts)
+        guard stored.keyCode != 0 else {
+            unregister()
+            os_log("No hotkey set, skipping registration", log: log, type: .info)
+            return
+        }
+
         let ok = register(keyCode: stored.keyCode, modifiers: stored.carbonModifiers)
         if !ok {
             os_log("Failed to register stored hotkey (keyCode=%d, modifiers=0x%x)",
@@ -34,6 +42,11 @@ final class HotkeyManager {
     @discardableResult
     func register(keyCode: UInt32, modifiers: UInt32) -> Bool {
         unregister()
+
+        // Don't register if no keyCode is set
+        guard keyCode != 0 && modifiers != 0 else {
+            return true // Consider this successful (no-op)
+        }
 
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
