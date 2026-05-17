@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 import os.log
 
 /// State machine for cleaning mode. Single source of truth.
@@ -124,6 +125,10 @@ final class CleaningModeManager {
         cancelAutoUnlockTimer()
         cancelPermissionRetry()
         interceptor.uninstall()
+        // The event tap consumed all .flagsChanged events during cleaning mode,
+        // so AppKit's internal modifier cache may still show Command keys as
+        // pressed. Posting synthetic key-up events resets that state.
+        ModifierState.reset()
         overlay.hide()
         cursor.show()
     }
@@ -175,5 +180,31 @@ final class CleaningModeManager {
     private func cancelPermissionRetry() {
         permissionRetryTimer?.cancel()
         permissionRetryTimer = nil
+    }
+}
+
+// MARK: - Modifier state reset
+
+/// Posts synthetic key-up events for both Command modifiers after the event tap
+/// is removed, clearing any stale modifier state in AppKit.
+///
+/// During cleaning mode the event tap consumes every `.flagsChanged` event, so
+/// AppKit never sees the Command-key presses. When the tap is uninstalled, the
+/// system's and AppKit's modifier state is stale. Sending a key-up for each
+/// Command key resets everything to a clean, no-modifiers baseline.
+private enum ModifierState {
+    static func reset() {
+        // Left Command = 0x37, Right Command = 0x36
+        postKeyUp(virtualKey: 0x37)
+        postKeyUp(virtualKey: 0x36)
+    }
+
+    private static func postKeyUp(virtualKey: CGKeyCode) {
+        guard let source = CGEventSource(stateID: .hidSystemState) else { return }
+        guard let event = CGEvent(keyboardEventSource: source,
+                                  virtualKey: virtualKey,
+                                  keyDown: false) else { return }
+        event.flags = CGEventFlags(rawValue: 0)
+        event.post(tap: .cghidEventTap)
     }
 }

@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+*.xcodeproj
+
+# XcodeGen (generated — regenerate with `xcodegen generate`)
+CleanLock.xcodeproj/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Archives
+*.zip
