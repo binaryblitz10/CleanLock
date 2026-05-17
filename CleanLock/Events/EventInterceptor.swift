@@ -34,7 +34,6 @@ final class EventInterceptor {
     private var leftCommandDown = false
     private var rightCommandDown = false
     private var otherModifiersActive = false
-    private var otherKeysDown = 0
 
     /// One-shot timer that fires after the 3-second uninterrupted hold.
     private var holdTimer: DispatchSourceTimer?
@@ -137,15 +136,14 @@ final class EventInterceptor {
             return nil
         }
 
-        // Any non-modifier key press immediately cancels the hold.
+        // Non-modifier key presses are consumed but do NOT cancel the hold timer
+        // or the hold condition. During keyboard cleaning many keys get pressed;
+        // the user intentionally holding both Command keys for 3 seconds is
+        // unambiguous regardless of other keys being pressed.
         if type == .keyDown {
-            otherKeysDown += 1
-            cancelHoldTimer()
             return nil
         }
         if type == .keyUp {
-            if otherKeysDown > 0 { otherKeysDown -= 1 }
-            evaluateHoldCondition()
             return nil
         }
 
@@ -178,7 +176,6 @@ final class EventInterceptor {
         let canHold = leftCommandDown
             && rightCommandDown
             && !otherModifiersActive
-            && otherKeysDown == 0
 
         if canHold {
             startHoldTimerIfNeeded()
@@ -207,11 +204,9 @@ final class EventInterceptor {
     private func holdTimerFired() {
         holdTimer = nil
         // Re-verify state at fire time: both Commands must still be down with
-        // no other keys or modifiers active. If the user released between the
-        // timer firing and this block executing (vanishingly unlikely on main
-        // queue), the guard prevents a stale unlock.
+        // no other modifiers (Ctrl, Opt, Shift) active.
         guard leftCommandDown && rightCommandDown
-                && !otherModifiersActive && otherKeysDown == 0 else { return }
+                && !otherModifiersActive else { return }
 
         resetUnlockState()
         DispatchQueue.main.async { [weak self] in
@@ -291,6 +286,5 @@ final class EventInterceptor {
         leftCommandDown = false
         rightCommandDown = false
         otherModifiersActive = false
-        otherKeysDown = 0
     }
 }

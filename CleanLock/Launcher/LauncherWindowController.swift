@@ -3,7 +3,6 @@ import SwiftUI
 
 /// Minimal launcher window — compact, balanced, native utility feel.
 final class LauncherWindowController: NSWindowController {
-
     var onStartCleaning: (() -> Void)?
     var onQuit: (() -> Void)?
     var onSettings: (() -> Void)?
@@ -52,7 +51,10 @@ final class LauncherWindowController: NSWindowController {
         )
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        fatalError()
+    }
 
     func showLauncher() {
         window?.center()
@@ -85,7 +87,7 @@ private struct LauncherView: View {
                     .font(.system(size: 14, weight: .semibold))
 
                 Text("Temporarily disable your keyboard and\n" +
-                     "trackpad so you can safely clean them.")
+                    "trackpad so you can safely clean them.")
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -113,7 +115,7 @@ private struct LauncherView: View {
 
             // ── Bottom action row ──
             HStack(spacing: 0) {
-                Button("Settings…") { onSettings?() }
+                Button("Settings") { onSettings?() }
                     .buttonStyle(.plain)
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)

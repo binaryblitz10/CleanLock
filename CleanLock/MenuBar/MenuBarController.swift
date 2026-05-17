@@ -40,7 +40,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
 
         let settingsItem = NSMenuItem(
-            title: "Settings…",
+            title: "Settings",
             action: #selector(openSettings),
             keyEquivalent: ","
         )
