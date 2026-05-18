@@ -65,8 +65,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         hotkeyManager.registerStoredHotkey()
 
-        cleaningManager.onDeactivated = { [weak self] in
-            // Return to idle — menu bar remains active.
+        cleaningManager.onDeactivated = { [weak self] reason in
+            if reason == .settingsRequested {
+                self?.openSettings()
+            }
             self?.menuBarController?.refreshToggleTitle()
         }
     }
@@ -95,8 +97,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         launcherWindowController = launcher
 
-        cleaningManager.onDeactivated = { [weak self] in
-            self?.launcherWindowController?.showLauncher()
+        cleaningManager.onDeactivated = { [weak self] reason in
+            if reason == .settingsRequested {
+                self?.openSettings()
+            } else {
+                NSApp.terminate(nil)
+            }
         }
 
         if showImmediately {

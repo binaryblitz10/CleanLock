@@ -5,7 +5,8 @@ import os.log
 
 /// Quartz event tap that consumes keyboard, mouse, trackpad, and system-defined
 /// (media key) events while cleaning mode is active. Requires a 3-second
-/// simultaneous hold of both left and right Command keys to unlock.
+/// simultaneous hold of both left and right Command keys to unlock, or both
+/// left and right Option keys to open settings.
 ///
 /// Unlock detection runs through TWO independent paths:
 ///   1. Primary — CGEvent tap callback tracks NX device flags from .flagsChanged events.
@@ -15,6 +16,9 @@ import os.log
 final class EventInterceptor {
     /// Called on main when the user completes the dual-Command 3-second hold.
     var onUnlockRequested: (() -> Void)?
+
+    /// Called on main when the user completes the dual-Option 3-second hold.
+    var onSettingsRequested: (() -> Void)?
 
     /// Called on main if the event tap is invalidated (timeout, user input
     /// monitoring revoked, etc.). Cleaning mode must exit immediately.
@@ -39,6 +43,22 @@ final class EventInterceptor {
     private var holdTimer: DispatchSourceTimer?
     private let unlockHoldDuration: TimeInterval = 3.0
 
+    // MARK: - Dual-Option hold state (primary: event tap)
+
+    /// NX device flag bits for left/right Option (Alt) keys.
+    private static let leftOptionBit: UInt64  = 0x00000020  // NX_DEVICELALTKEYMASK
+    private static let rightOptionBit: UInt64 = 0x00000040  // NX_DEVICERALTKEYMASK
+    /// Every NX modifier bit other than the two Option bits.
+    private static let nonOptionModifierBits: UInt64 = 0x00000887  // L/R Cmd, Ctrl, Shift, Fn
+
+    private var leftOptionDown = false
+    private var rightOptionDown = false
+    private var optionOtherModifiersActive = false
+
+    /// One-shot timer that fires after the 3-second uninterrupted Option hold.
+    private var settingsHoldTimer: DispatchSourceTimer?
+    private let settingsHoldDuration: TimeInterval = 3.0
+
     // MARK: - Dual-Command hold state (backup: Carbon poll)
 
     /// Carbon's GetCurrentKeyModifiers() polled every 200 ms. Works even when the
@@ -47,6 +67,11 @@ final class EventInterceptor {
     private var backupHoldStartTime: CFTimeInterval = 0
     private static let carbonLeftCmdBit: UInt32  = 0x00000008  // NX_DEVICELCMDKEYMASK
     private static let carbonRightCmdBit: UInt32 = 0x00000010  // NX_DEVICERCMDKEYMASK
+    private static let carbonLeftOptBit: UInt32  = 0x00000020  // NX_DEVICELALTKEYMASK
+    private static let carbonRightOptBit: UInt32 = 0x00000040  // NX_DEVICERALTKEYMASK
+
+    /// Separate hold start time for the Option key backup check.
+    private var backupSettingsHoldStartTime: CFTimeInterval = 0
 
     // MARK: - Re-enable storm detector
 
@@ -65,6 +90,7 @@ final class EventInterceptor {
         if tap != nil { return true }
 
         resetUnlockState()
+        resetSettingsHoldState()
 
         let mask = CGEventMask(UInt64.max)
 
@@ -106,6 +132,7 @@ final class EventInterceptor {
         tap = nil
         runLoopSource = nil
         resetUnlockState()
+        resetSettingsHoldState()
     }
 
     // MARK: - Callback (C-style)
@@ -160,17 +187,26 @@ final class EventInterceptor {
         }
     }
 
-    // MARK: - Dual-Command hold unlock detection (primary: event tap)
+    // MARK: - Modifier hold detection (primary: event tap)
 
     private func handleFlagsChanged(event: CGEvent) {
         let rawFlags = event.flags.rawValue
 
+        // Command key state
         leftCommandDown  = (rawFlags & Self.leftCommandBit)  != 0
         rightCommandDown = (rawFlags & Self.rightCommandBit) != 0
         otherModifiersActive = (rawFlags & Self.otherModifierBits) != 0
 
+        // Option key state
+        leftOptionDown  = (rawFlags & Self.leftOptionBit)  != 0
+        rightOptionDown = (rawFlags & Self.rightOptionBit) != 0
+        optionOtherModifiersActive = (rawFlags & Self.nonOptionModifierBits) != 0
+
         evaluateHoldCondition()
+        evaluateSettingsHoldCondition()
     }
+
+    // MARK: - Dual-Command hold (unlock)
 
     private func evaluateHoldCondition() {
         let canHold = leftCommandDown
@@ -214,11 +250,56 @@ final class EventInterceptor {
         }
     }
 
-    // MARK: - Dual-Command hold unlock detection (backup: Carbon poll)
+    // MARK: - Dual-Option hold (settings)
+
+    private func evaluateSettingsHoldCondition() {
+        let canHold = leftOptionDown
+            && rightOptionDown
+            && !optionOtherModifiersActive
+
+        if canHold {
+            startSettingsHoldTimerIfNeeded()
+        } else {
+            cancelSettingsHoldTimer()
+        }
+    }
+
+    private func startSettingsHoldTimerIfNeeded() {
+        guard settingsHoldTimer == nil else { return }
+
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now() + settingsHoldDuration)
+        timer.setEventHandler { [weak self] in
+            self?.settingsHoldTimerFired()
+        }
+        settingsHoldTimer = timer
+        timer.resume()
+    }
+
+    private func cancelSettingsHoldTimer() {
+        settingsHoldTimer?.cancel()
+        settingsHoldTimer = nil
+    }
+
+    private func settingsHoldTimerFired() {
+        settingsHoldTimer = nil
+        // Re-verify state at fire time: both Options must still be down with
+        // no other modifiers (Cmd, Ctrl, Shift, Fn) active.
+        guard leftOptionDown && rightOptionDown
+                && !optionOtherModifiersActive else { return }
+
+        resetSettingsHoldState()
+        DispatchQueue.main.async { [weak self] in
+            self?.onSettingsRequested?()
+        }
+    }
+
+    // MARK: - Modifier hold detection (backup: Carbon poll)
 
     /// Polls GetCurrentKeyModifiers() every 200 ms. Completely independent of the
     /// CGEvent tap — survives disabling/re-enabling cycles. The poll checks for
-    /// BOTH left and right Command held continuously for 3 seconds.
+    /// BOTH left and right Command keys held continuously for 3 seconds, and
+    /// independently checks for BOTH left and right Option keys.
     private func startBackupPoll() {
         cancelBackupPoll()
 
@@ -233,25 +314,46 @@ final class EventInterceptor {
 
     private func backupPollTick() {
         let raw = GetCurrentKeyModifiers()
-        let leftHeld  = (raw & Self.carbonLeftCmdBit) != 0
-        let rightHeld = (raw & Self.carbonRightCmdBit) != 0
 
-        if leftHeld && rightHeld {
+        // Command key check
+        let leftCmdHeld  = (raw & Self.carbonLeftCmdBit) != 0
+        let rightCmdHeld = (raw & Self.carbonRightCmdBit) != 0
+
+        if leftCmdHeld && rightCmdHeld {
             if backupHoldStartTime == 0 {
                 backupHoldStartTime = CFAbsoluteTimeGetCurrent()
             }
             let elapsed = CFAbsoluteTimeGetCurrent() - backupHoldStartTime
             if elapsed >= unlockHoldDuration {
-                // Guard: also verify through the event-tap state (if it's live)
-                // as an extra safety check.
                 backupHoldStartTime = 0
                 cancelBackupPoll()
                 DispatchQueue.main.async { [weak self] in
                     self?.onUnlockRequested?()
                 }
+                return
             }
         } else {
             backupHoldStartTime = 0
+        }
+
+        // Option key check (independent of Command check)
+        let leftOptHeld  = (raw & Self.carbonLeftOptBit) != 0
+        let rightOptHeld = (raw & Self.carbonRightOptBit) != 0
+
+        if leftOptHeld && rightOptHeld {
+            if backupSettingsHoldStartTime == 0 {
+                backupSettingsHoldStartTime = CFAbsoluteTimeGetCurrent()
+            }
+            let elapsed = CFAbsoluteTimeGetCurrent() - backupSettingsHoldStartTime
+            if elapsed >= settingsHoldDuration {
+                backupSettingsHoldStartTime = 0
+                cancelBackupPoll()
+                DispatchQueue.main.async { [weak self] in
+                    self?.onSettingsRequested?()
+                }
+            }
+        } else {
+            backupSettingsHoldStartTime = 0
         }
     }
 
@@ -259,6 +361,7 @@ final class EventInterceptor {
         backupPollTimer?.cancel()
         backupPollTimer = nil
         backupHoldStartTime = 0
+        backupSettingsHoldStartTime = 0
     }
 
     // MARK: - Storm detection
@@ -286,5 +389,12 @@ final class EventInterceptor {
         leftCommandDown = false
         rightCommandDown = false
         otherModifiersActive = false
+    }
+
+    private func resetSettingsHoldState() {
+        cancelSettingsHoldTimer()
+        leftOptionDown = false
+        rightOptionDown = false
+        optionOtherModifiersActive = false
     }
 }

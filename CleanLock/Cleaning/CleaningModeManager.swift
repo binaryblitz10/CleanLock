@@ -18,6 +18,7 @@ final class CleaningModeManager {
     enum DeactivateReason {
         case userUnlock
         case userToggle
+        case settingsRequested
         case willSleep
         case screenLocked
         case displayChange
@@ -30,9 +31,10 @@ final class CleaningModeManager {
 
     private(set) var state: State = .idle
 
-    /// Called after deactivation completes. The owner (AppDelegate) decides
-    /// what happens next — show launcher, terminate, or return to idle.
-    var onDeactivated: (() -> Void)?
+    /// Called after deactivation completes with the reason. The owner (AppDelegate)
+    /// decides what happens next — show launcher, terminate, open settings, or
+    /// return to idle.
+    var onDeactivated: ((DeactivateReason) -> Void)?
 
     private let interceptor = EventInterceptor()
     private let overlay = OverlayWindowController()
@@ -45,6 +47,9 @@ final class CleaningModeManager {
     private init() {
         interceptor.onUnlockRequested = { [weak self] in
             self?.deactivate(reason: .userUnlock)
+        }
+        interceptor.onSettingsRequested = { [weak self] in
+            self?.deactivate(reason: .settingsRequested)
         }
         interceptor.onTapDisabled = { [weak self] in
             self?.deactivate(reason: .eventTapDisabled)
@@ -109,7 +114,7 @@ final class CleaningModeManager {
         performTeardown()
         state = .idle
 
-        onDeactivated?()
+        onDeactivated?(reason)
     }
 
     /// Synchronous, no-checks teardown — used from termination / crash paths.

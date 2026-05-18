@@ -87,10 +87,12 @@ private final class OverlayContentView: NSView {
 
     private let titleField: NSTextField
     private let subtitleField: NSTextField
+    private let hintField: NSTextField
 
     override init(frame frameRect: NSRect) {
         titleField = OverlayContentView.makeLabel()
         subtitleField = OverlayContentView.makeLabel()
+        hintField = OverlayContentView.makeLabel()
         super.init(frame: frameRect)
 
         wantsLayer = true
@@ -117,7 +119,6 @@ private final class OverlayContentView: NSView {
         let hintStyle = NSMutableParagraphStyle()
         hintStyle.alignment = .center
 
-        let hintField = OverlayContentView.makeLabel()
         hintField.attributedStringValue = NSAttributedString(
             string: "Hold both \u{2318} keys for 3 seconds to exit",
             attributes: [
@@ -128,22 +129,37 @@ private final class OverlayContentView: NSView {
         )
         hintField.translatesAutoresizingMaskIntoConstraints = false
 
+        let settingsHintField = OverlayContentView.makeLabel()
+        settingsHintField.attributedStringValue = NSAttributedString(
+            string: "Hold both \u{2325} keys for 3 seconds to open settings",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 12, weight: .regular),
+                .foregroundColor: NSColor(white: 1.0, alpha: 0.35),
+                .paragraphStyle: hintStyle,
+            ]
+        )
+        settingsHintField.translatesAutoresizingMaskIntoConstraints = false
+
         titleField.translatesAutoresizingMaskIntoConstraints = false
         subtitleField.translatesAutoresizingMaskIntoConstraints = false
 
         addSubview(titleField)
         addSubview(subtitleField)
         addSubview(hintField)
+        addSubview(settingsHintField)
 
         NSLayoutConstraint.activate([
             titleField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            titleField.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -20),
+            titleField.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -30),
 
             subtitleField.centerXAnchor.constraint(equalTo: centerXAnchor),
             subtitleField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 12),
 
             hintField.centerXAnchor.constraint(equalTo: centerXAnchor),
             hintField.topAnchor.constraint(equalTo: subtitleField.bottomAnchor, constant: 6),
+
+            settingsHintField.centerXAnchor.constraint(equalTo: centerXAnchor),
+            settingsHintField.topAnchor.constraint(equalTo: hintField.bottomAnchor, constant: 4),
         ])
     }
 
