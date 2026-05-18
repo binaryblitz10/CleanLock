@@ -349,6 +349,8 @@ final class HotkeyRecorderField: NSView {
         button.bezelStyle = .shadowlessSquare
         button.isBordered = false
         button.wantsLayer = true
+        button.focusRingType = .none
+        button.refusesFirstResponder = true
         button.image = NSImage(systemSymbolName: "xmark", accessibilityDescription: "Clear shortcut")
         button.image?.isTemplate = true
         button.alphaValue = 0
@@ -368,6 +370,7 @@ final class HotkeyRecorderField: NSView {
 
     init() {
         super.init(frame: NSRect(x: 0, y: 0, width: 140, height: 30))
+        wantsLayer = true
 
         // Background
         backgroundView.wantsLayer = true
@@ -429,19 +432,37 @@ final class HotkeyRecorderField: NSView {
 
     // MARK: - Responder
 
+    // Only accept first responder when explicitly clicked, not automatically
+    // when the window opens. Otherwise the field captures keystrokes before
+    // the user has interacted with it.
+    private var shouldAcceptFirstResponder = false
+
     override var acceptsFirstResponder: Bool {
-        true
+        shouldAcceptFirstResponder
     }
 
     override var canBecomeKeyView: Bool {
-        true
+        shouldAcceptFirstResponder
+    }
+
+    // Ensure mouse events route to this view through SwiftUI's hosting hierarchy.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard !isHidden, alphaValue > 0 else { return nil }
+        let local = convert(point, from: superview)
+        guard bounds.contains(local) else { return super.hitTest(point) }
+
+        // Forward clicks on the clear button to it so its action fires.
+        if hasShortcut {
+            if let hitView = clearButton.hitTest(local) {
+                return hitView
+            }
+        }
+
+        return self
     }
 
     override func mouseDown(with event: NSEvent) {
-        let point = convert(event.locationInWindow, from: nil)
-        if hasShortcut, clearButton.frame.contains(point) {
-            return // Let the button handle it
-        }
+        shouldAcceptFirstResponder = true
         window?.makeFirstResponder(self)
     }
 
@@ -449,12 +470,13 @@ final class HotkeyRecorderField: NSView {
         recording = true
         textField.attributedStringValue = Self.placeholderString("Press shortcut\u{2026}")
         updateBackgroundStyle(isActive: true)
-        needsLayout = true
+        layout()
         return super.becomeFirstResponder()
     }
 
     override func resignFirstResponder() -> Bool {
         recording = false
+        shouldAcceptFirstResponder = false
         refreshDisplay()
         updateBackgroundStyle(isActive: false)
         return super.resignFirstResponder()
@@ -463,6 +485,9 @@ final class HotkeyRecorderField: NSView {
     // MARK: - Public API
 
     func set(keyCode: UInt32, modifiers: UInt32) {
+        // Don't let SwiftUI's updateNSView overwrite the "Press shortcut\u{2026}"
+        // prompt while the user is in the middle of recording.
+        guard !recording else { return }
         currentKeyCode = keyCode
         currentModifiers = modifiers
         refreshDisplay()
@@ -524,6 +549,11 @@ final class HotkeyRecorderField: NSView {
     @objc private func clearShortcut() {
         currentKeyCode = 0
         currentModifiers = 0
+        // Resign first responder first so the recording guard in refreshDisplay
+        // doesn't prevent the visual update.
+        if recording {
+            window?.makeFirstResponder(nil)
+        }
         refreshDisplay()
         onChange?(0, 0)
     }
@@ -532,7 +562,7 @@ final class HotkeyRecorderField: NSView {
         if hasShortcut {
             let shortcutText = Self.describe(keyCode: currentKeyCode, modifiers: currentModifiers)
             textField.attributedStringValue = Self.shortcutString(shortcutText)
-            clearButton.alphaValue = isHovering ? 0.8 : 0.5
+            clearButton.alphaValue = isHovering ? 0.7 : 0
         } else {
             textField.attributedStringValue = Self.placeholderString("Click to set")
             clearButton.alphaValue = 0
@@ -557,7 +587,7 @@ final class HotkeyRecorderField: NSView {
 
     private func updateHoverState() {
         if hasShortcut {
-            clearButton.alphaValue = isHovering ? 0.8 : 0.5
+            clearButton.alphaValue = isHovering ? 0.7 : 0
         }
         if !recording {
             backgroundView.layer?.backgroundColor = isHovering ? recorderHoverBackgroundColor : recorderBackgroundColor
@@ -632,14 +662,36 @@ final class HotkeyRecorderField: NSView {
         case kVK_ANSI_4: return "4"; case kVK_ANSI_5: return "5"
         case kVK_ANSI_6: return "6"; case kVK_ANSI_7: return "7"
         case kVK_ANSI_8: return "8"; case kVK_ANSI_9: return "9"
+        case kVK_ANSI_Minus: return "\u{2212}"        // −
+        case kVK_ANSI_Equal: return "="
+        case kVK_ANSI_LeftBracket: return "["
+        case kVK_ANSI_RightBracket: return "]"
+        case kVK_ANSI_Semicolon: return ";"
+        case kVK_ANSI_Quote: return "'"
+        case kVK_ANSI_Grave: return "`"
+        case kVK_ANSI_Comma: return ","
+        case kVK_ANSI_Period: return "."
+        case kVK_ANSI_Slash: return "/"
+        case kVK_ANSI_Backslash: return "\u{005C}"    // backslash
         case kVK_Space: return "Space"
         case kVK_Return: return "Return"
+        case kVK_Tab: return "Tab"
+        case kVK_Delete: return "Delete"
+        case kVK_ForwardDelete: return "Fwd Del"
         case kVK_F1: return "F1"; case kVK_F2: return "F2"
         case kVK_F3: return "F3"; case kVK_F4: return "F4"
         case kVK_F5: return "F5"; case kVK_F6: return "F6"
         case kVK_F7: return "F7"; case kVK_F8: return "F8"
         case kVK_F9: return "F9"; case kVK_F10: return "F10"
         case kVK_F11: return "F11"; case kVK_F12: return "F12"
+        case kVK_UpArrow: return "\u{2191}"            // ↑
+        case kVK_DownArrow: return "\u{2193}"          // ↓
+        case kVK_LeftArrow: return "\u{2190}"          // ←
+        case kVK_RightArrow: return "\u{2192}"         // →
+        case kVK_PageUp: return "Page Up"
+        case kVK_PageDown: return "Page Down"
+        case kVK_Home: return "Home"
+        case kVK_End: return "End"
         default: return "Key \(kc)"
         }
     }
@@ -660,6 +712,7 @@ private extension NSAppearance {
 
 final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private var model: SettingsViewModel?
+    private var didInitialFirstResponderClear = false
 
     convenience init() {
         let model = SettingsViewModel()
@@ -703,5 +756,18 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_: Notification) {
         model?.refreshAccessibility()
+        didInitialFirstResponderClear = false
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        // Clear the auto-selected first responder after the window has become
+        // key, preventing focus rings from appearing on pickers or buttons.
+        // Must happen in windowDidBecomeKey because windowWillBecomeKey fires
+        // before AppKit auto-selects a first responder, making the nil clear
+        // get overridden.
+        if !didInitialFirstResponderClear {
+            didInitialFirstResponderClear = true
+            window?.makeFirstResponder(nil)
+        }
     }
 }
