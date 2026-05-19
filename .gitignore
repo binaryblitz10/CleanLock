@@ -13,5 +13,8 @@ CleanLock.xcodeproj/
 .build/
 .swiftpm/
 
+# Xcode Build (derived data)
+build/
+
 # Archives
 *.zip
