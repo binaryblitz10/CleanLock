@@ -20,6 +20,12 @@ final class EventInterceptor {
     /// Called on main when the user completes the dual-Option 3-second hold.
     var onSettingsRequested: (() -> Void)?
 
+    /// Called on main with hold status and remaining seconds (3, 2, 1).
+    var onCommandHoldChanged: ((Bool, Int) -> Void)?
+
+    /// Called on main with hold status and remaining seconds (3, 2, 1).
+    var onOptionHoldChanged: ((Bool, Int) -> Void)?
+
     /// Called on main if the event tap is invalidated (timeout, user input
     /// monitoring revoked, etc.). Cleaning mode must exit immediately.
     var onTapDisabled: (() -> Void)?
@@ -41,6 +47,8 @@ final class EventInterceptor {
 
     /// One-shot timer that fires after the 3-second uninterrupted hold.
     private var holdTimer: DispatchSourceTimer?
+    /// Ticks every second during hold to report progress (3, 2, 1).
+    private var holdTickTimer: DispatchSourceTimer?
     private let unlockHoldDuration: TimeInterval = 3.0
 
     // MARK: - Dual-Option hold state (primary: event tap)
@@ -57,6 +65,8 @@ final class EventInterceptor {
 
     /// One-shot timer that fires after the 3-second uninterrupted Option hold.
     private var settingsHoldTimer: DispatchSourceTimer?
+    /// Ticks every second during Option hold to report progress (3, 2, 1).
+    private var settingsHoldTickTimer: DispatchSourceTimer?
     private let settingsHoldDuration: TimeInterval = 3.0
 
     // MARK: - Dual-Command hold state (backup: Carbon poll)
@@ -230,11 +240,39 @@ final class EventInterceptor {
         }
         holdTimer = timer
         timer.resume()
+
+        onCommandHoldChanged?(true, Int(unlockHoldDuration))
+        startHoldTickTimer()
+    }
+
+    private func startHoldTickTimer() {
+        var elapsed = 0
+        let tick = DispatchSource.makeTimerSource(queue: .main)
+        tick.schedule(deadline: .now() + 1, repeating: .seconds(1), leeway: .milliseconds(100))
+        tick.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            elapsed += 1
+            let remaining = Int(self.unlockHoldDuration) - elapsed
+            guard remaining > 0 else {
+                tick.cancel()
+                return
+            }
+            self.onCommandHoldChanged?(true, remaining)
+        }
+        holdTickTimer = tick
+        tick.resume()
     }
 
     private func cancelHoldTimer() {
         holdTimer?.cancel()
         holdTimer = nil
+        cancelHoldTickTimer()
+        onCommandHoldChanged?(false, 0)
+    }
+
+    private func cancelHoldTickTimer() {
+        holdTickTimer?.cancel()
+        holdTickTimer = nil
     }
 
     private func holdTimerFired() {
@@ -274,11 +312,39 @@ final class EventInterceptor {
         }
         settingsHoldTimer = timer
         timer.resume()
+
+        onOptionHoldChanged?(true, Int(settingsHoldDuration))
+        startSettingsHoldTickTimer()
+    }
+
+    private func startSettingsHoldTickTimer() {
+        var elapsed = 0
+        let tick = DispatchSource.makeTimerSource(queue: .main)
+        tick.schedule(deadline: .now() + 1, repeating: .seconds(1), leeway: .milliseconds(100))
+        tick.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            elapsed += 1
+            let remaining = Int(self.settingsHoldDuration) - elapsed
+            guard remaining > 0 else {
+                tick.cancel()
+                return
+            }
+            self.onOptionHoldChanged?(true, remaining)
+        }
+        settingsHoldTickTimer = tick
+        tick.resume()
     }
 
     private func cancelSettingsHoldTimer() {
         settingsHoldTimer?.cancel()
         settingsHoldTimer = nil
+        cancelSettingsHoldTickTimer()
+        onOptionHoldChanged?(false, 0)
+    }
+
+    private func cancelSettingsHoldTickTimer() {
+        settingsHoldTickTimer?.cancel()
+        settingsHoldTickTimer = nil
     }
 
     private func settingsHoldTimerFired() {

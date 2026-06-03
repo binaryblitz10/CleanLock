@@ -66,6 +66,10 @@ final class OverlayWindowController {
         (window?.contentView as? OverlayContentView)?.setCountdown(seconds)
     }
 
+    func updateHoldHint(isHolding: Bool, secondsRemaining: Int) {
+        (window?.contentView as? OverlayContentView)?.setHoldHint(isHolding: isHolding, secondsRemaining: secondsRemaining)
+    }
+
     private static func builtInScreen() -> NSScreen? {
         for screen in NSScreen.screens {
             guard let number = screen.deviceDescription[
@@ -81,24 +85,36 @@ final class OverlayWindowController {
 }
 
 private final class OverlayWindow: NSWindow {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
+    override var canBecomeKey: Bool {
+        true
+    }
+
+    override var canBecomeMain: Bool {
+        true
+    }
 }
 
 private final class OverlayContentView: NSView {
-    override var isFlipped: Bool { false }
-    override var wantsUpdateLayer: Bool { true }
+    override var isFlipped: Bool {
+        false
+    }
+
+    override var wantsUpdateLayer: Bool {
+        true
+    }
 
     private let titleField: NSTextField
     private let subtitleField: NSTextField
     private let hintField: NSTextField
     private let countdownField: NSTextField
+    private let holdHintField: NSTextField
 
     override init(frame frameRect: NSRect) {
         titleField = OverlayContentView.makeLabel()
         subtitleField = OverlayContentView.makeLabel()
         hintField = OverlayContentView.makeLabel()
         countdownField = OverlayContentView.makeLabel()
+        holdHintField = OverlayContentView.makeLabel()
         super.init(frame: frameRect)
 
         wantsLayer = true
@@ -146,11 +162,17 @@ private final class OverlayContentView: NSView {
         )
         settingsHintField.translatesAutoresizingMaskIntoConstraints = false
 
-        countdownField.font = .monospacedDigitSystemFont(ofSize: 16, weight: .regular)
+        countdownField.font = .monospacedDigitSystemFont(ofSize: 86, weight: .regular)
         countdownField.alphaValue = 0.45
         countdownField.alignment = .center
         countdownField.isHidden = true
         countdownField.translatesAutoresizingMaskIntoConstraints = false
+
+        holdHintField.font = .systemFont(ofSize: 14, weight: .regular)
+        holdHintField.alphaValue = 0.25
+        holdHintField.alignment = .center
+        holdHintField.isHidden = true
+        holdHintField.translatesAutoresizingMaskIntoConstraints = false
 
         titleField.translatesAutoresizingMaskIntoConstraints = false
         subtitleField.translatesAutoresizingMaskIntoConstraints = false
@@ -160,6 +182,7 @@ private final class OverlayContentView: NSView {
         addSubview(hintField)
         addSubview(settingsHintField)
         addSubview(countdownField)
+        addSubview(holdHintField)
 
         NSLayoutConstraint.activate([
             titleField.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -176,10 +199,16 @@ private final class OverlayContentView: NSView {
 
             countdownField.centerXAnchor.constraint(equalTo: centerXAnchor),
             countdownField.topAnchor.constraint(equalTo: settingsHintField.bottomAnchor, constant: 12),
+
+            holdHintField.centerXAnchor.constraint(equalTo: centerXAnchor),
+            holdHintField.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -60),
         ])
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
+        fatalError()
+    }
 
     fileprivate func setCountdown(_ seconds: Int) {
         if seconds > 0 {
@@ -189,6 +218,16 @@ private final class OverlayContentView: NSView {
             countdownField.isHidden = false
         } else {
             countdownField.isHidden = true
+        }
+    }
+
+    fileprivate func setHoldHint(isHolding: Bool, secondsRemaining: Int) {
+        if isHolding, secondsRemaining > 0 {
+            let suffix = secondsRemaining == 1 ? "" : "s"
+            holdHintField.stringValue = "Keep holding for \(secondsRemaining) second\(suffix)"
+            holdHintField.isHidden = false
+        } else {
+            holdHintField.isHidden = true
         }
     }
 

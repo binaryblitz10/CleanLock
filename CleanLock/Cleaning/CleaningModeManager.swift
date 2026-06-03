@@ -57,6 +57,12 @@ final class CleaningModeManager {
         interceptor.onTapDisabled = { [weak self] in
             self?.deactivate(reason: .eventTapDisabled)
         }
+        interceptor.onCommandHoldChanged = { [weak self] isHolding, remaining in
+            self?.overlay.updateHoldHint(isHolding: isHolding, secondsRemaining: remaining)
+        }
+        interceptor.onOptionHoldChanged = { [weak self] isHolding, remaining in
+            self?.overlay.updateHoldHint(isHolding: isHolding, secondsRemaining: remaining)
+        }
     }
 
     // MARK: - Public API
