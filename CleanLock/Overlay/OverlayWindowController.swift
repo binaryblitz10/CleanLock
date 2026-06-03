@@ -162,14 +162,14 @@ private final class OverlayContentView: NSView {
         )
         settingsHintField.translatesAutoresizingMaskIntoConstraints = false
 
-        countdownField.font = .monospacedDigitSystemFont(ofSize: 86, weight: .regular)
-        countdownField.alphaValue = 0.45
+        countdownField.font = .monospacedDigitSystemFont(ofSize: 120, weight: .regular)
+        countdownField.alphaValue = 0.05
         countdownField.alignment = .center
         countdownField.isHidden = true
         countdownField.translatesAutoresizingMaskIntoConstraints = false
 
         holdHintField.font = .systemFont(ofSize: 14, weight: .regular)
-        holdHintField.alphaValue = 0.25
+        holdHintField.alphaValue = 0.35
         holdHintField.alignment = .center
         holdHintField.isHidden = true
         holdHintField.translatesAutoresizingMaskIntoConstraints = false

@@ -241,23 +241,20 @@ final class EventInterceptor {
         holdTimer = timer
         timer.resume()
 
-        onCommandHoldChanged?(true, Int(unlockHoldDuration))
         startHoldTickTimer()
     }
 
     private func startHoldTickTimer() {
-        var elapsed = 0
+        var remaining = Int(unlockHoldDuration)
         let tick = DispatchSource.makeTimerSource(queue: .main)
-        tick.schedule(deadline: .now() + 1, repeating: .seconds(1), leeway: .milliseconds(100))
+        tick.schedule(deadline: .now(), repeating: .seconds(1), leeway: .milliseconds(100))
         tick.setEventHandler { [weak self] in
             guard let self = self else { return }
-            elapsed += 1
-            let remaining = Int(self.unlockHoldDuration) - elapsed
-            guard remaining > 0 else {
-                tick.cancel()
-                return
-            }
             self.onCommandHoldChanged?(true, remaining)
+            remaining -= 1
+            if remaining <= 0 {
+                tick.cancel()
+            }
         }
         holdTickTimer = tick
         tick.resume()
@@ -313,23 +310,20 @@ final class EventInterceptor {
         settingsHoldTimer = timer
         timer.resume()
 
-        onOptionHoldChanged?(true, Int(settingsHoldDuration))
         startSettingsHoldTickTimer()
     }
 
     private func startSettingsHoldTickTimer() {
-        var elapsed = 0
+        var remaining = Int(settingsHoldDuration)
         let tick = DispatchSource.makeTimerSource(queue: .main)
-        tick.schedule(deadline: .now() + 1, repeating: .seconds(1), leeway: .milliseconds(100))
+        tick.schedule(deadline: .now(), repeating: .seconds(1), leeway: .milliseconds(100))
         tick.setEventHandler { [weak self] in
             guard let self = self else { return }
-            elapsed += 1
-            let remaining = Int(self.settingsHoldDuration) - elapsed
-            guard remaining > 0 else {
-                tick.cancel()
-                return
-            }
             self.onOptionHoldChanged?(true, remaining)
+            remaining -= 1
+            if remaining <= 0 {
+                tick.cancel()
+            }
         }
         settingsHoldTickTimer = tick
         tick.resume()
