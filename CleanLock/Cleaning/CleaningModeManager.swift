@@ -41,6 +41,9 @@ final class CleaningModeManager {
     private let cursor = CursorHider()
     private var autoUnlockTimer: DispatchSourceTimer?
     private var permissionRetryTimer: DispatchSourceTimer?
+    private var countdownTickTimer: DispatchSourceTimer?
+    private var activationDate: Date?
+    private var totalCountdownSeconds: Int = 0
 
     private let log = OSLog(subsystem: "com.cleanlock.app", category: "CleaningMode")
 
@@ -128,6 +131,7 @@ final class CleaningModeManager {
 
     private func performTeardown() {
         cancelAutoUnlockTimer()
+        cancelCountdownTickTimer()
         cancelPermissionRetry()
         interceptor.uninstall()
         // The event tap consumed all .flagsChanged events during cleaning mode,
@@ -140,8 +144,12 @@ final class CleaningModeManager {
 
     private func startAutoUnlockTimerIfNeeded() {
         cancelAutoUnlockTimer()
+        cancelCountdownTickTimer()
         let seconds = Preferences.shared.autoUnlockSeconds
         guard seconds > 0 else { return }
+
+        totalCountdownSeconds = seconds
+        activationDate = Date()
 
         let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + .seconds(seconds))
@@ -150,6 +158,22 @@ final class CleaningModeManager {
         }
         autoUnlockTimer = timer
         timer.resume()
+
+        let tick = DispatchSource.makeTimerSource(queue: .main)
+        tick.schedule(deadline: .now(), repeating: .seconds(1), leeway: .milliseconds(200))
+        tick.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            let elapsed = Int(-(self.activationDate ?? Date()).timeIntervalSinceNow)
+            let remaining = max(0, self.totalCountdownSeconds - elapsed)
+            self.overlay.updateAutoUnlockCountdown(seconds: remaining)
+        }
+        countdownTickTimer = tick
+        tick.resume()
+    }
+
+    private func cancelCountdownTickTimer() {
+        countdownTickTimer?.cancel()
+        countdownTickTimer = nil
     }
 
     private func cancelAutoUnlockTimer() {

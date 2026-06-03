@@ -62,6 +62,10 @@ final class OverlayWindowController {
         window = nil
     }
 
+    func updateAutoUnlockCountdown(seconds: Int) {
+        (window?.contentView as? OverlayContentView)?.setCountdown(seconds)
+    }
+
     private static func builtInScreen() -> NSScreen? {
         for screen in NSScreen.screens {
             guard let number = screen.deviceDescription[
@@ -88,11 +92,13 @@ private final class OverlayContentView: NSView {
     private let titleField: NSTextField
     private let subtitleField: NSTextField
     private let hintField: NSTextField
+    private let countdownField: NSTextField
 
     override init(frame frameRect: NSRect) {
         titleField = OverlayContentView.makeLabel()
         subtitleField = OverlayContentView.makeLabel()
         hintField = OverlayContentView.makeLabel()
+        countdownField = OverlayContentView.makeLabel()
         super.init(frame: frameRect)
 
         wantsLayer = true
@@ -140,6 +146,12 @@ private final class OverlayContentView: NSView {
         )
         settingsHintField.translatesAutoresizingMaskIntoConstraints = false
 
+        countdownField.font = .monospacedDigitSystemFont(ofSize: 16, weight: .regular)
+        countdownField.alphaValue = 0.45
+        countdownField.alignment = .center
+        countdownField.isHidden = true
+        countdownField.translatesAutoresizingMaskIntoConstraints = false
+
         titleField.translatesAutoresizingMaskIntoConstraints = false
         subtitleField.translatesAutoresizingMaskIntoConstraints = false
 
@@ -147,6 +159,7 @@ private final class OverlayContentView: NSView {
         addSubview(subtitleField)
         addSubview(hintField)
         addSubview(settingsHintField)
+        addSubview(countdownField)
 
         NSLayoutConstraint.activate([
             titleField.centerXAnchor.constraint(equalTo: centerXAnchor),
@@ -160,10 +173,24 @@ private final class OverlayContentView: NSView {
 
             settingsHintField.centerXAnchor.constraint(equalTo: centerXAnchor),
             settingsHintField.topAnchor.constraint(equalTo: hintField.bottomAnchor, constant: 4),
+
+            countdownField.centerXAnchor.constraint(equalTo: centerXAnchor),
+            countdownField.topAnchor.constraint(equalTo: settingsHintField.bottomAnchor, constant: 12),
         ])
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    fileprivate func setCountdown(_ seconds: Int) {
+        if seconds > 0 {
+            let minutes = seconds / 60
+            let secs = seconds % 60
+            countdownField.stringValue = String(format: "%02d:%02d", minutes, secs)
+            countdownField.isHidden = false
+        } else {
+            countdownField.isHidden = true
+        }
+    }
 
     private static func makeLabel() -> NSTextField {
         let f = NSTextField(labelWithString: "")
