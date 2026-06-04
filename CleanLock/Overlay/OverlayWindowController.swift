@@ -118,6 +118,7 @@ private final class OverlayContentView: NSView {
         super.init(frame: frameRect)
 
         wantsLayer = true
+        allowedTouchTypes = [.indirect, .direct]
         layer?.backgroundColor = NSColor(red: 0.07, green: 0.07, blue: 0.075, alpha: 1.0).cgColor
 
         titleField.font = .systemFont(ofSize: 28, weight: .semibold)
@@ -230,6 +231,22 @@ private final class OverlayContentView: NSView {
             holdHintField.isHidden = true
         }
     }
+
+    // MARK: - Gesture absorption
+
+    /// Trackpad gesture events like 4-finger swipe (Spaces), 3-finger swipe
+    /// (navigation), pinch (Launchpad), and rotate are handled by the
+    /// WindowServer/Dock above the HID event tap. These overrides absorb them
+    /// so they never trigger system-level actions during cleaning mode.
+    override func swipe(with event: NSEvent) {}
+    override func magnify(with event: NSEvent) {}
+    override func rotate(with event: NSEvent) {}
+    override func beginGesture(with event: NSEvent) {}
+    override func endGesture(with event: NSEvent) {}
+    override func touchesBegan(with event: NSEvent) {}
+    override func touchesMoved(with event: NSEvent) {}
+    override func touchesEnded(with event: NSEvent) {}
+    override func touchesCancelled(with event: NSEvent) {}
 
     private static func makeLabel() -> NSTextField {
         let f = NSTextField(labelWithString: "")
