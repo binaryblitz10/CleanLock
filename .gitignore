@@ -15,6 +15,7 @@ CleanLock.xcodeproj/
 
 # Xcode Build (derived data)
 build/
+DerivedData/
 
 # Archives
 *.zip

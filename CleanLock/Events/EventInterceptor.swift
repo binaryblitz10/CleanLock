@@ -193,8 +193,22 @@ final class EventInterceptor {
              .scrollWheel:
             return nil
         default:
-            return nil
+            break
         }
+
+        // Consume gesture events — these cover NSEventTypeGesture (29),
+        // NSEventTypeMagnify (30 / pinched zoom), NSEventTypeSwipe (31),
+        // NSEventTypeRotate (18), NSEventTypeBeginGesture (19),
+        // NSEventTypeEndGesture (20), and NSEventTypePressure (34 / Force
+        // Touch level changes).
+        //
+        // App-level gestures (3-finger swipe for browser navigation, pinch
+        // zoom, rotation) arrive through the HID event tap and are consumed
+        // here. System-level gestures (4-finger swipe for Spaces, 3-finger
+        // Mission Control) are handled by the Dock through the
+        // MultitouchSupport framework and bypass this tap entirely — they
+        // require workspace-change monitoring as a secondary defense.
+        return nil
     }
 
     // MARK: - Modifier hold detection (primary: event tap)

@@ -6,6 +6,8 @@ import CoreGraphics
 final class OverlayWindowController {
     private var window: NSWindow?
     private var previousPresentationOptions: NSApplication.PresentationOptions?
+    private var gestureMonitor: Any?
+    private var spaceChangeObserver: NSObjectProtocol?
 
     func show() {
         precondition(Thread.isMainThread)
@@ -47,10 +49,16 @@ final class OverlayWindowController {
         w.makeKeyAndOrderFront(nil)
         w.orderFrontRegardless()
         window = w
+
+        startGestureMonitoring()
+        startSpaceChangeMonitoring()
     }
 
     func hide() {
         precondition(Thread.isMainThread)
+        stopGestureMonitoring()
+        stopSpaceChangeMonitoring()
+
         if let opts = previousPresentationOptions {
             NSApp.presentationOptions = opts
             previousPresentationOptions = nil
@@ -60,6 +68,78 @@ final class OverlayWindowController {
         window?.orderOut(nil)
         window?.contentView = nil
         window = nil
+    }
+
+    // MARK: - Gesture monitoring
+
+    /// Registers a local NSEvent monitor that absorbs trackpad gesture events
+    /// before they reach the NSView responder chain. This catches app-level
+    /// gestures (3-finger swipe, pinch zoom, rotation, Force Touch) that may
+    /// briefly arrive while the CGEvent tap is being re-enabled by the system.
+    ///
+    /// System-level gestures handled by the Dock (4-finger swipe for Spaces,
+    /// 3-finger Mission Control) bypass this monitor entirely — see
+    /// `startSpaceChangeMonitoring()` for the secondary defense against those.
+    private func startGestureMonitoring() {
+        stopGestureMonitoring()
+
+        let mask: NSEvent.EventTypeMask = [
+            .gesture, .magnify, .swipe, .rotate,
+            .beginGesture, .endGesture,
+            .pressure,
+        ]
+
+        let monitor = NSEvent.addLocalMonitorForEvents(matching: mask) { _ in
+            return nil
+        }
+        gestureMonitor = monitor
+    }
+
+    private func stopGestureMonitoring() {
+        if let monitor = gestureMonitor {
+            NSEvent.removeMonitor(monitor)
+            gestureMonitor = nil
+        }
+    }
+
+    // MARK: - Space change defense
+
+    /// Observes `NSWorkspace.activeSpaceDidChangeNotification` and immediately
+    /// re-asserts the overlay as the key, frontmost window. This mitigates
+    /// system-level trackpad gestures (4-finger swipe for Spaces, 3-finger
+    /// Mission Control) which the Dock handles through the MultitouchSupport
+    /// framework at a level beneath the CGEvent HID event tap.
+    ///
+    /// When the Dock switches Spaces in response to a gesture, the overlay
+    /// follows because of `.canJoinAllSpaces` in its collection behavior.
+    /// Re-ordering it to front ensures it stays dominant and the user never
+    /// sees content from the destination space.
+    private func startSpaceChangeMonitoring() {
+        stopSpaceChangeMonitoring()
+        spaceChangeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            // Re-assert overlay dominance after a space transition.
+            // The overlay's canJoinAllSpaces means it's already on the new
+            // space; ordering it front ensures nothing else layers above it.
+            self?.window?.orderFrontRegardless()
+            self?.window?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    private func stopSpaceChangeMonitoring() {
+        if let obs = spaceChangeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(obs)
+            spaceChangeObserver = nil
+        }
+    }
+
+    deinit {
+        stopGestureMonitoring()
+        stopSpaceChangeMonitoring()
     }
 
     func updateAutoUnlockCountdown(seconds: Int) {
@@ -234,10 +314,23 @@ private final class OverlayContentView: NSView {
 
     // MARK: - Gesture absorption
 
-    /// Trackpad gesture events like 4-finger swipe (Spaces), 3-finger swipe
-    /// (navigation), pinch (Launchpad), and rotate are handled by the
-    /// WindowServer/Dock above the HID event tap. These overrides absorb them
-    /// so they never trigger system-level actions during cleaning mode.
+    /// Override all gesture/touch responder methods so they are absorbed by the
+    /// overlay view rather than propagating up the responder chain or being
+    /// handled by the WindowServer/Dock default behavior.
+    ///
+    /// Multi-touch gestures (4-finger swipe for Spaces, 3-finger swipe for
+    /// navigation, pinch for Launchpad, rotate) and force-click pressure
+    /// changes are recognized by the WindowServer/Dock/multitouch driver at a
+    /// layer that runs independently of our HID event tap. The only way to stop
+    /// them from triggering system actions is to absorb them here.
+    ///
+    /// NOTE: The trackpad's haptic "click" feedback is generated by the Taptic
+    /// Engine firmware when the force sensor detects pressure — this happens
+    /// at the hardware/driver level below any software and cannot be suppressed
+    /// programmatically. The CGEvent tap does consume the resulting mouse-down
+    /// events so they never reach any application, but the haptic click itself
+    /// is unavoidable.
+    override func pressureChange(with event: NSEvent) {}
     override func swipe(with event: NSEvent) {}
     override func magnify(with event: NSEvent) {}
     override func rotate(with event: NSEvent) {}
