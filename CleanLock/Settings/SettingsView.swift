@@ -3,6 +3,82 @@ import Carbon.HIToolbox
 import Combine
 import SwiftUI
 
+// MARK: - Liquid Glass Helpers
+
+/// A card background that uses Liquid Glass on macOS 26+ and ultra-thin material on earlier versions.
+private struct GlassCard<Content: View>: View {
+    let cornerRadius: CGFloat
+    let interactive: Bool
+    let tint: Color?
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if #available(macOS 26, *) {
+            content
+                .glassEffect(
+                    {
+                        var g = Glass.regular
+                        if let tint { g = g.tint(tint) }
+                        if interactive { g = g.interactive() }
+                        return g
+                    }(),
+                    in: .rect(cornerRadius: cornerRadius)
+                )
+        } else {
+            content
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        }
+    }
+}
+
+/// A checkmark badge inside a glass circle.
+private struct GlassCheckmark: View {
+    let checked: Bool
+
+    var body: some View {
+        if #available(macOS 26, *) {
+            Group {
+                if checked {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 22, height: 22)
+                        .glassEffect(.regular.tint(.green), in: .circle)
+                } else {
+                    Circle()
+                        .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
+                        .frame(width: 22, height: 22)
+                }
+            }
+        } else {
+            Group {
+                if checked {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(.green)
+                } else {
+                    Circle()
+                        .strokeBorder(Color.secondary.opacity(0.3), lineWidth: 1)
+                        .frame(width: 18, height: 18)
+                }
+            }
+        }
+    }
+}
+
+/// A glass-styled divider.
+private struct GlassDivider: View {
+    var body: some View {
+        if #available(macOS 26, *) {
+            Divider()
+                .overlay(.regularMaterial)
+                .opacity(0.5)
+        } else {
+            Divider()
+        }
+    }
+}
+
 // MARK: - Settings View Model
 
 final class SettingsViewModel: ObservableObject {
@@ -105,7 +181,8 @@ struct SettingsView: View {
                         .frame(width: 140, height: 30)
                     }
 
-                    Divider().padding(.vertical, 10)
+                    GlassDivider()
+                        .padding(.vertical, 10)
 
                     rowItem(label: "Auto Unlock") {
                         Picker("", selection: $model.autoUnlockSeconds) {
@@ -117,7 +194,8 @@ struct SettingsView: View {
                         .frame(width: 120)
                     }
 
-                    Divider().padding(.vertical, 10)
+                    GlassDivider()
+                        .padding(.vertical, 10)
 
                     rowItem(label: "Launch at Login") {
                         Toggle("", isOn: $model.launchAtLogin)
@@ -131,33 +209,46 @@ struct SettingsView: View {
                 // ── Permissions ──
                 sectionHeader(title: "Permissions", subtitle: nil)
 
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Accessibility")
-                            .font(.system(size: 13, weight: .regular))
-                        Text("Required for keyboard and mouse control.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    if model.hasAccessibility {
-                        Label("Granted", systemImage: "checkmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.green)
-                    } else {
-                        Button("Grant Access\u{2026}") {
-                            PermissionsManager.shared.openAccessibilitySettings()
+                GlassCard(cornerRadius: 10, interactive: false, tint: model.hasAccessibility ? .green : nil) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Accessibility")
+                                .font(.system(size: 13, weight: .regular))
+                            Text("Required for keyboard and mouse control.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
                         }
-                        .controlSize(.small)
+
+                        Spacer()
+
+                        if model.hasAccessibility {
+                            GlassCheckmark(checked: true)
+                        } else {
+                            Button("Grant Access\u{2026}") {
+                                PermissionsManager.shared.openAccessibilitySettings()
+                            }
+                            .controlSize(.small)
+                        }
                     }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
                 }
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(width: 480)
+        .background(rootBackground)
+    }
+
+    @ViewBuilder
+    private var rootBackground: some View {
+        if #available(macOS 26, *) {
+            GlassEffectContainer(spacing: 0) {
+                Color.clear
+                    .glassEffect(.regular)
+            }
+        }
     }
 
     // MARK: - Helpers
@@ -200,47 +291,7 @@ private struct ModeCard: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Icon area
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(iconBackgroundColor)
-                        .frame(height: 108)
-
-                    Image(systemName: iconName)
-                        .font(.system(size: 36, weight: .regular))
-                        .foregroundStyle(isSelected ? Color.white : Color.secondary)
-                }
-                .overlay(alignment: .topTrailing) {
-                    selectionIndicator
-                        .padding(10)
-                }
-
-                // Title + description
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(title)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.primary)
-                    Text(description)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(.leading)
-                }
-                .padding(.horizontal, 13)
-                .padding(.top, 11)
-                .padding(.bottom, 13)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(cardBackgroundColor)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(cardBorderColor, lineWidth: isSelected ? 1.5 : 0.5)
-            }
+            cardContent
         }
         .buttonStyle(.plain)
         .focusable(false)
@@ -252,7 +303,85 @@ private struct ModeCard: View {
         .animation(.easeOut(duration: 0.15), value: isSelected)
     }
 
-    private var selectionIndicator: some View {
+    @ViewBuilder
+    private var cardContent: some View {
+        if #available(macOS 26, *) {
+            // ── Liquid Glass on macOS 26+ ──
+            VStack(alignment: .leading, spacing: 0) {
+                iconArea
+                cardTextArea
+            }
+            .glassEffect(
+                isSelected
+                    ? Glass.regular.tint(.accentColor).interactive()
+                    : Glass.clear.interactive(isHovering),
+                in: .rect(cornerRadius: 12)
+            )
+            .overlay(alignment: .topTrailing) {
+                GlassCheckmark(checked: isSelected)
+                    .padding(12)
+            }
+        } else {
+            // ── Rich material fallback on macOS 15 ──
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(iconBackgroundColor)
+                        .frame(height: 108)
+
+                    Image(systemName: iconName)
+                        .font(.system(size: 36, weight: .regular))
+                        .foregroundStyle(isSelected ? Color.white : Color.secondary)
+                }
+                .overlay(alignment: .topTrailing) {
+                    fallbackSelectionIndicator
+                        .padding(10)
+                }
+
+                cardTextArea
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(cardBackgroundColor)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(cardBorderColor, lineWidth: isSelected ? 1.5 : 0.5)
+            }
+        }
+    }
+
+    private var iconArea: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(iconBackgroundColor)
+                .frame(height: 108)
+
+            Image(systemName: iconName)
+                .font(.system(size: 36, weight: .regular))
+                .foregroundStyle(isSelected ? Color.white : Color.secondary)
+        }
+    }
+
+    private var cardTextArea: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary)
+            Text(description)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineSpacing(2)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(.horizontal, 13)
+        .padding(.top, 11)
+        .padding(.bottom, 13)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var fallbackSelectionIndicator: some View {
         ZStack {
             Circle()
                 .strokeBorder(
@@ -372,7 +501,20 @@ final class HotkeyRecorderField: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: 140, height: 30))
         wantsLayer = true
 
-        // Background
+        // Background with visual effect material where available
+        if #available(macOS 26, *) {
+            let blur = NSVisualEffectView()
+            blur.material = .hudWindow
+            blur.blendingMode = .withinWindow
+            blur.state = .active
+            blur.wantsLayer = true
+            blur.layer?.cornerRadius = cornerRadius
+            blur.layer?.cornerCurve = .continuous
+            blur.layer?.maskedCorners = [.layerMaxXMaxYCorner, .layerMaxXMinYCorner, .layerMinXMaxYCorner, .layerMinXMinYCorner]
+            blur.autoresizingMask = [.width, .height]
+            backgroundView.addSubview(blur)
+        }
+
         backgroundView.wantsLayer = true
         backgroundView.layer?.cornerRadius = cornerRadius
         backgroundView.layer?.cornerCurve = .continuous
@@ -602,23 +744,23 @@ final class HotkeyRecorderField: NSView {
 
     private var recorderBackgroundColor: CGColor {
         if effectiveAppearance.isDarkMode {
-            return NSColor(white: 0.15, alpha: 1.0).cgColor
+            return NSColor(white: 0.12, alpha: 1.0).cgColor
         }
-        return NSColor(white: 0.98, alpha: 1.0).cgColor
+        return NSColor(white: 0.95, alpha: 1.0).cgColor
     }
 
     private var recorderHoverBackgroundColor: CGColor {
         if effectiveAppearance.isDarkMode {
-            return NSColor(white: 0.18, alpha: 1.0).cgColor
+            return NSColor(white: 0.16, alpha: 1.0).cgColor
         }
-        return NSColor(white: 0.95, alpha: 1.0).cgColor
+        return NSColor(white: 0.92, alpha: 1.0).cgColor
     }
 
     private var recorderActiveBackgroundColor: CGColor {
         if effectiveAppearance.isDarkMode {
             return NSColor(white: 0.20, alpha: 1.0).cgColor
         }
-        return NSColor(white: 0.93, alpha: 1.0).cgColor
+        return NSColor(white: 0.88, alpha: 1.0).cgColor
     }
 
     // MARK: - Static Helpers
@@ -721,7 +863,6 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         hostingView.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
         hostingView.setContentCompressionResistancePriority(.defaultHigh, for: .vertical)
 
-        // Calculate ideal height from content
         let contentHeight: CGFloat = 540
 
         let window = NSWindow(
@@ -734,20 +875,29 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.center()
 
-        let visualEffect = NSVisualEffectView()
-        visualEffect.material = .windowBackground
-        visualEffect.blendingMode = .behindWindow
-        visualEffect.state = .active
-        visualEffect.autoresizingMask = [.width, .height]
-        window.contentView = visualEffect
+        if #available(macOS 26, *) {
+            // Transparent window — Liquid Glass is rendered by SwiftUI
+            window.isOpaque = false
+            window.backgroundColor = .clear
+            window.titlebarAppearsTransparent = true
+            window.styleMask.insert(.fullSizeContentView)
+            window.contentView = hostingView
+        } else {
+            let visualEffect = NSVisualEffectView()
+            visualEffect.material = .sidebar
+            visualEffect.blendingMode = .behindWindow
+            visualEffect.state = .active
+            visualEffect.autoresizingMask = [.width, .height]
+            window.contentView = visualEffect
 
-        visualEffect.addSubview(hostingView)
-        NSLayoutConstraint.activate([
-            hostingView.topAnchor.constraint(equalTo: visualEffect.topAnchor),
-            hostingView.leadingAnchor.constraint(equalTo: visualEffect.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: visualEffect.trailingAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor),
-        ])
+            visualEffect.addSubview(hostingView)
+            NSLayoutConstraint.activate([
+                hostingView.topAnchor.constraint(equalTo: visualEffect.topAnchor),
+                hostingView.leadingAnchor.constraint(equalTo: visualEffect.leadingAnchor),
+                hostingView.trailingAnchor.constraint(equalTo: visualEffect.trailingAnchor),
+                hostingView.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor),
+            ])
+        }
 
         self.init(window: window)
         self.model = model

@@ -186,6 +186,7 @@ private final class OverlayContentView: NSView {
     private let titleField: NSTextField
     private let subtitleField: NSTextField
     private let hintField: NSTextField
+    private let settingsHintField: NSTextField
     private let countdownField: NSTextField
     private let holdHintField: NSTextField
 
@@ -193,70 +194,106 @@ private final class OverlayContentView: NSView {
         titleField = OverlayContentView.makeLabel()
         subtitleField = OverlayContentView.makeLabel()
         hintField = OverlayContentView.makeLabel()
+        settingsHintField = OverlayContentView.makeLabel()
         countdownField = OverlayContentView.makeLabel()
         holdHintField = OverlayContentView.makeLabel()
         super.init(frame: frameRect)
 
         wantsLayer = true
         allowedTouchTypes = [.indirect, .direct]
-        layer?.backgroundColor = NSColor(red: 0.07, green: 0.07, blue: 0.075, alpha: 1.0).cgColor
 
-        titleField.font = .systemFont(ofSize: 28, weight: .semibold)
-        titleField.alphaValue = 0.9
-        titleField.stringValue = "Cleaning Mode"
-        titleField.alignment = .center
+        // Gradient background with refined dark palette
+        let gradient = CAGradientLayer()
+        gradient.colors = [
+            NSColor(red: 0.05, green: 0.05, blue: 0.06, alpha: 1.0).cgColor,
+            NSColor(red: 0.07, green: 0.07, blue: 0.08, alpha: 1.0).cgColor,
+            NSColor(red: 0.09, green: 0.09, blue: 0.10, alpha: 1.0).cgColor,
+        ]
+        gradient.locations = [0.0, 0.5, 1.0]
+        gradient.startPoint = CGPoint(x: 0.5, y: 0.0)
+        gradient.endPoint = CGPoint(x: 0.5, y: 1.0)
+        layer?.addSublayer(gradient)
+        // Store gradient reference for frame updates
+        gradientFrame = gradient
+
+        // Title with refined weight and tracking
+        let titleStyle = NSMutableParagraphStyle()
+        titleStyle.alignment = .center
+
+        titleField.attributedStringValue = NSAttributedString(
+            string: "Cleaning Mode",
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 32, weight: .semibold),
+                .foregroundColor: NSColor(white: 1.0, alpha: 0.92),
+                .kern: 1.5,
+                .paragraphStyle: titleStyle,
+            ]
+        )
+        titleField.translatesAutoresizingMaskIntoConstraints = false
 
         let subtitleStyle = NSMutableParagraphStyle()
         subtitleStyle.alignment = .center
-        subtitleStyle.lineSpacing = 6
+        subtitleStyle.lineSpacing = 7
 
         subtitleField.attributedStringValue = NSAttributedString(
             string: "Your keyboard and mouse are disabled.",
             attributes: [
-                .font: NSFont.systemFont(ofSize: 14, weight: .regular),
+                .font: NSFont.systemFont(ofSize: 15, weight: .regular),
                 .foregroundColor: NSColor(white: 1.0, alpha: 0.55),
                 .paragraphStyle: subtitleStyle,
             ]
         )
+        subtitleField.translatesAutoresizingMaskIntoConstraints = false
 
         let hintStyle = NSMutableParagraphStyle()
         hintStyle.alignment = .center
+        hintStyle.lineSpacing = 5
+
+        let hintAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 12.5, weight: .regular),
+            .foregroundColor: NSColor(white: 1.0, alpha: 0.30),
+            .paragraphStyle: hintStyle,
+        ]
 
         hintField.attributedStringValue = NSAttributedString(
             string: "Hold both \u{2318} keys for 3 seconds to exit",
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 12, weight: .regular),
-                .foregroundColor: NSColor(white: 1.0, alpha: 0.35),
-                .paragraphStyle: hintStyle,
-            ]
+            attributes: hintAttributes
         )
         hintField.translatesAutoresizingMaskIntoConstraints = false
 
-        let settingsHintField = OverlayContentView.makeLabel()
         settingsHintField.attributedStringValue = NSAttributedString(
             string: "Hold both \u{2325} keys for 3 seconds to open settings",
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 12, weight: .regular),
-                .foregroundColor: NSColor(white: 1.0, alpha: 0.35),
-                .paragraphStyle: hintStyle,
-            ]
+            attributes: hintAttributes
         )
         settingsHintField.translatesAutoresizingMaskIntoConstraints = false
 
-        countdownField.font = .monospacedDigitSystemFont(ofSize: 120, weight: .regular)
-        countdownField.alphaValue = 0.05
-        countdownField.alignment = .center
+        // Countdown with refined styling
+        let countdownStyle = NSMutableParagraphStyle()
+        countdownStyle.alignment = .center
+
+        countdownField.attributedStringValue = NSAttributedString(
+            string: "00:00",
+            attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 96, weight: .ultraLight),
+                .foregroundColor: NSColor(white: 1.0, alpha: 0.06),
+                .kern: 8.0,
+                .paragraphStyle: countdownStyle,
+            ]
+        )
         countdownField.isHidden = true
         countdownField.translatesAutoresizingMaskIntoConstraints = false
 
-        holdHintField.font = .systemFont(ofSize: 14, weight: .regular)
-        holdHintField.alphaValue = 0.35
-        holdHintField.alignment = .center
+        let holdAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 14, weight: .regular),
+            .foregroundColor: NSColor(white: 1.0, alpha: 0.45),
+            .paragraphStyle: hintStyle,
+        ]
+        holdHintField.attributedStringValue = NSAttributedString(
+            string: "",
+            attributes: holdAttributes
+        )
         holdHintField.isHidden = true
         holdHintField.translatesAutoresizingMaskIntoConstraints = false
-
-        titleField.translatesAutoresizingMaskIntoConstraints = false
-        subtitleField.translatesAutoresizingMaskIntoConstraints = false
 
         addSubview(titleField)
         addSubview(subtitleField)
@@ -267,23 +304,31 @@ private final class OverlayContentView: NSView {
 
         NSLayoutConstraint.activate([
             titleField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            titleField.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -30),
+            titleField.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -36),
 
             subtitleField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            subtitleField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 12),
+            subtitleField.topAnchor.constraint(equalTo: titleField.bottomAnchor, constant: 14),
 
             hintField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            hintField.topAnchor.constraint(equalTo: subtitleField.bottomAnchor, constant: 6),
+            hintField.topAnchor.constraint(equalTo: subtitleField.bottomAnchor, constant: 8),
 
             settingsHintField.centerXAnchor.constraint(equalTo: centerXAnchor),
             settingsHintField.topAnchor.constraint(equalTo: hintField.bottomAnchor, constant: 4),
 
             countdownField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            countdownField.topAnchor.constraint(equalTo: settingsHintField.bottomAnchor, constant: 12),
+            countdownField.topAnchor.constraint(equalTo: settingsHintField.bottomAnchor, constant: 16),
 
             holdHintField.centerXAnchor.constraint(equalTo: centerXAnchor),
-            holdHintField.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -60),
+            holdHintField.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -70),
         ])
+    }
+
+    /// Track gradient layer for layout updates
+    private var gradientFrame: CAGradientLayer?
+
+    override func layout() {
+        super.layout()
+        gradientFrame?.frame = bounds
     }
 
     @available(*, unavailable)
@@ -295,7 +340,17 @@ private final class OverlayContentView: NSView {
         if seconds > 0 {
             let minutes = seconds / 60
             let secs = seconds % 60
-            countdownField.stringValue = String(format: "%02d:%02d", minutes, secs)
+            let style = NSMutableParagraphStyle()
+            style.alignment = .center
+            countdownField.attributedStringValue = NSAttributedString(
+                string: String(format: "%02d:%02d", minutes, secs),
+                attributes: [
+                    .font: NSFont.monospacedDigitSystemFont(ofSize: 96, weight: .ultraLight),
+                    .foregroundColor: NSColor(white: 1.0, alpha: 0.06),
+                    .kern: 8.0,
+                    .paragraphStyle: style,
+                ]
+            )
             countdownField.isHidden = false
         } else {
             countdownField.isHidden = true
@@ -304,8 +359,17 @@ private final class OverlayContentView: NSView {
 
     fileprivate func setHoldHint(isHolding: Bool, secondsRemaining: Int) {
         if isHolding, secondsRemaining > 0 {
+            let style = NSMutableParagraphStyle()
+            style.alignment = .center
             let suffix = secondsRemaining == 1 ? "" : "s"
-            holdHintField.stringValue = "Keep holding for \(secondsRemaining) second\(suffix)"
+            holdHintField.attributedStringValue = NSAttributedString(
+                string: "Keep holding for \(secondsRemaining) second\(suffix)",
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: 14, weight: .regular),
+                    .foregroundColor: NSColor(white: 1.0, alpha: 0.45),
+                    .paragraphStyle: style,
+                ]
+            )
             holdHintField.isHidden = false
         } else {
             holdHintField.isHidden = true

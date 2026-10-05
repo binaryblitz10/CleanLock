@@ -99,15 +99,26 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     @objc private func showAbout() {
         NSApp.activate(ignoringOtherApps: true)
+
         let alert = NSAlert()
         alert.messageText = "CleanLock"
         alert.informativeText = """
-        Temporarily disables your keyboard and trackpad so you can clean them.
+        Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
 
-        Hold both Command (\u{2318}) keys for 3 seconds to exit cleaning mode.
+        Temporarily disables your keyboard and trackpad so you can safely clean them.
+
+        \u{2022} Hold both \u{2318} keys for 3 seconds to exit cleaning mode
+        \u{2022} Hold both \u{2325} keys for 3 seconds to open settings
+        \u{2022} Press your hotkey to toggle cleaning mode on/off
         """
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
+        let okButton = alert.addButton(withTitle: "OK")
+        okButton.keyEquivalent = "\r"
+
+        // Style the alert window with a cleaner appearance
+        alert.window.title = "About CleanLock"
+        alert.window.isMovableByWindowBackground = true
+
         alert.runModal()
     }
 
