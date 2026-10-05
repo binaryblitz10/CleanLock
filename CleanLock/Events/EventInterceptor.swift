@@ -33,6 +33,17 @@ final class EventInterceptor {
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
+    /// Second tap at the session level. System trackpad gestures (Spaces swipes,
+    /// Mission Control) are synthesized by the WindowServer after the HID stage,
+    /// so only a session-level tap can see and swallow them.
+    private var sessionTap: CFMachPort?
+    private var sessionRunLoopSource: CFRunLoopSource?
+
+    /// Both taps run on a dedicated thread so main-thread stalls cannot cause
+    /// `tapDisabledByTimeout` (which lets events leak through).
+    private var tapThread: Thread?
+    private var tapRunLoop: CFRunLoop?
+
     // MARK: - Dual-Command hold state (primary: event tap)
 
     /// NX device flag bits — these appear in the low word of CGEventFlags.rawValue.
@@ -120,11 +131,45 @@ final class EventInterceptor {
         }
 
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
-        CGEvent.tapEnable(tap: port, enable: true)
-
         self.tap = port
         self.runLoopSource = source
+
+        // Session-level tap: swallows system gestures. Failure is non-fatal.
+        if let sPort = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: EventInterceptor.sessionTapCallback,
+            userInfo: selfPtr
+        ) {
+            sessionTap = sPort
+            sessionRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, sPort, 0)
+        } else {
+            os_log("Session tap unavailable — system gestures may leak",
+                   log: log, type: .error)
+        }
+
+        let ready = DispatchSemaphore(value: 0)
+        let thread = Thread { [weak self] in
+            guard let self = self else { ready.signal(); return }
+            let rl = CFRunLoopGetCurrent()!
+            CFRunLoopAddSource(rl, self.runLoopSource, .commonModes)
+            if let s = self.sessionRunLoopSource {
+                CFRunLoopAddSource(rl, s, .commonModes)
+            }
+            self.tapRunLoop = rl
+            ready.signal()
+            CFRunLoopRun()
+        }
+        thread.name = "CleanLock.EventTap"
+        thread.qualityOfService = .userInteractive
+        tapThread = thread
+        thread.start()
+        ready.wait()
+
+        CGEvent.tapEnable(tap: port, enable: true)
+        if let sPort = sessionTap { CGEvent.tapEnable(tap: sPort, enable: true) }
 
         // Start the Carbon-based backup poll. It runs independently and detects
         // the dual-Command hold even when the event tap is briefly disabled.
@@ -135,12 +180,18 @@ final class EventInterceptor {
     func uninstall() {
         guard let port = tap else { return }
         CGEvent.tapEnable(tap: port, enable: false)
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+        if let sPort = sessionTap {
+            CGEvent.tapEnable(tap: sPort, enable: false)
+            CFMachPortInvalidate(sPort)
         }
+        if let rl = tapRunLoop { CFRunLoopStop(rl) }
         CFMachPortInvalidate(port)
         tap = nil
         runLoopSource = nil
+        sessionTap = nil
+        sessionRunLoopSource = nil
+        tapRunLoop = nil
+        tapThread = nil
         resetUnlockState()
         resetSettingsHoldState()
     }
@@ -153,23 +204,46 @@ final class EventInterceptor {
         return interceptor.handle(type: type, event: event)
     }
 
+    private static let sessionTapCallback: CGEventTapCallBack = { _, type, event, userInfo in
+        guard let userInfo = userInfo else { return Unmanaged.passUnretained(event) }
+        let interceptor = Unmanaged<EventInterceptor>.fromOpaque(userInfo).takeUnretainedValue()
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            interceptor.handleTapDisabled(type: type)
+        }
+        // Swallow everything, including gesture events (swipe, magnify, rotate,
+        // dock-control) that never appear at the HID level.
+        return nil
+    }
+
+    /// Runs on the tap thread. Re-enables both taps immediately, then hops to
+    /// main for state mutation.
+    private func handleTapDisabled(type: CGEventType) {
+        os_log("Event tap auto-disabled (%{public}d) — re-enabling",
+               log: log, type: .info, type.rawValue)
+        if let port = tap { CGEvent.tapEnable(tap: port, enable: true) }
+        if let port = sessionTap { CGEvent.tapEnable(tap: port, enable: true) }
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.tap != nil else { return }
+            // We may have missed modifier transitions during the gap.
+            self.resetUnlockState()
+            self.recordTapReenable()
+        }
+    }
+
+    /// Runs on the tap thread; must stay minimal.
     private func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            os_log("Event tap auto-disabled (%{public}d) — re-enabling",
-                   log: log, type: .info, type.rawValue)
-            if let port = tap {
-                CGEvent.tapEnable(tap: port, enable: true)
-            }
-            // Tap disable invalidates our state: we may have missed modifier
-            // transitions during the gap. Cancel any in-progress unlock.
-            resetUnlockState()
-            recordTapReenable()
+            handleTapDisabled(type: type)
             return nil
         }
 
         // Modifier-key changes track left/right Command independently.
         if type == .flagsChanged {
-            handleFlagsChanged(event: event)
+            let raw = event.flags.rawValue
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self, self.tap != nil else { return }
+                self.handleFlagsChanged(rawFlags: raw)
+            }
             return nil
         }
 
@@ -213,9 +287,7 @@ final class EventInterceptor {
 
     // MARK: - Modifier hold detection (primary: event tap)
 
-    private func handleFlagsChanged(event: CGEvent) {
-        let rawFlags = event.flags.rawValue
-
+    private func handleFlagsChanged(rawFlags: UInt64) {
         // Command key state
         leftCommandDown  = (rawFlags & Self.leftCommandBit)  != 0
         rightCommandDown = (rawFlags & Self.rightCommandBit) != 0
