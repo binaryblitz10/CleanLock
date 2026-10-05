@@ -459,7 +459,10 @@ final class EventInterceptor {
     }
 
     private func backupPollTick() {
-        let raw = GetCurrentKeyModifiers()
+        // Carbon's GetCurrentKeyModifiers() cannot tell left from right, so read
+        // the device-level flags from the HID system state instead.
+        let raw = UInt32(truncatingIfNeeded:
+            CGEventSource.flagsState(.hidSystemState).rawValue)
 
         // Command key check
         let leftCmdHeld  = (raw & Self.carbonLeftCmdBit) != 0

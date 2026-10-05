@@ -18,8 +18,12 @@ private struct GlassCard<Content: View>: View {
                 .glassEffect(
                     {
                         var g = Glass.regular
-                        if let tint { g = g.tint(tint) }
-                        if interactive { g = g.interactive() }
+                        if let tint {
+                            g = g.tint(tint)
+                        }
+                        if interactive {
+                            g = g.interactive()
+                        }
                         return g
                     }(),
                     in: .rect(cornerRadius: cornerRadius)
@@ -163,7 +167,7 @@ struct SettingsView: View {
                     )
                     ModeCard(
                         title: "Launcher",
-                        description: "Opens the app window at login. You can close it while it runs in the background.",
+                        description: "Locks your keyboard and trackpad when you open the app.",
                         iconName: "macwindow",
                         isSelected: model.launchMode == .launcher,
                         action: { model.launchMode = .launcher }
@@ -238,17 +242,6 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(width: 480)
-        .background(rootBackground)
-    }
-
-    @ViewBuilder
-    private var rootBackground: some View {
-        if #available(macOS 26, *) {
-            GlassEffectContainer(spacing: 0) {
-                Color.clear
-                    .glassEffect(.regular)
-            }
-        }
     }
 
     // MARK: - Helpers
@@ -574,9 +567,9 @@ final class HotkeyRecorderField: NSView {
 
     // MARK: - Responder
 
-    // Only accept first responder when explicitly clicked, not automatically
-    // when the window opens. Otherwise the field captures keystrokes before
-    // the user has interacted with it.
+    /// Only accept first responder when explicitly clicked, not automatically
+    /// when the window opens. Otherwise the field captures keystrokes before
+    /// the user has interacted with it.
     private var shouldAcceptFirstResponder = false
 
     override var acceptsFirstResponder: Bool {
@@ -587,7 +580,7 @@ final class HotkeyRecorderField: NSView {
         shouldAcceptFirstResponder
     }
 
-    // Ensure mouse events route to this view through SwiftUI's hosting hierarchy.
+    /// Ensure mouse events route to this view through SwiftUI's hosting hierarchy.
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard !isHidden, alphaValue > 0 else { return nil }
         let local = convert(point, from: superview)
@@ -603,7 +596,7 @@ final class HotkeyRecorderField: NSView {
         return self
     }
 
-    override func mouseDown(with event: NSEvent) {
+    override func mouseDown(with _: NSEvent) {
         shouldAcceptFirstResponder = true
         window?.makeFirstResponder(self)
     }
@@ -767,19 +760,35 @@ final class HotkeyRecorderField: NSView {
 
     private static func carbonModifiers(from flags: NSEvent.ModifierFlags) -> UInt32 {
         var m: UInt32 = 0
-        if flags.contains(.command) { m |= UInt32(cmdKey) }
-        if flags.contains(.shift) { m |= UInt32(shiftKey) }
-        if flags.contains(.option) { m |= UInt32(optionKey) }
-        if flags.contains(.control) { m |= UInt32(controlKey) }
+        if flags.contains(.command) {
+            m |= UInt32(cmdKey)
+        }
+        if flags.contains(.shift) {
+            m |= UInt32(shiftKey)
+        }
+        if flags.contains(.option) {
+            m |= UInt32(optionKey)
+        }
+        if flags.contains(.control) {
+            m |= UInt32(controlKey)
+        }
         return m
     }
 
     static func describe(keyCode: UInt32, modifiers: UInt32) -> String {
         var parts: [String] = []
-        if modifiers & UInt32(controlKey) != 0 { parts.append("\u{2303}") }
-        if modifiers & UInt32(optionKey) != 0 { parts.append("\u{2325}") }
-        if modifiers & UInt32(shiftKey) != 0 { parts.append("\u{21E7}") }
-        if modifiers & UInt32(cmdKey) != 0 { parts.append("\u{2318}") }
+        if modifiers & UInt32(controlKey) != 0 {
+            parts.append("\u{2303}")
+        }
+        if modifiers & UInt32(optionKey) != 0 {
+            parts.append("\u{2325}")
+        }
+        if modifiers & UInt32(shiftKey) != 0 {
+            parts.append("\u{21E7}")
+        }
+        if modifiers & UInt32(cmdKey) != 0 {
+            parts.append("\u{2318}")
+        }
         parts.append(keyCodeName(keyCode))
         return parts.joined(separator: "")
     }
@@ -804,7 +813,7 @@ final class HotkeyRecorderField: NSView {
         case kVK_ANSI_4: return "4"; case kVK_ANSI_5: return "5"
         case kVK_ANSI_6: return "6"; case kVK_ANSI_7: return "7"
         case kVK_ANSI_8: return "8"; case kVK_ANSI_9: return "9"
-        case kVK_ANSI_Minus: return "\u{2212}"        // −
+        case kVK_ANSI_Minus: return "\u{2212}" // −
         case kVK_ANSI_Equal: return "="
         case kVK_ANSI_LeftBracket: return "["
         case kVK_ANSI_RightBracket: return "]"
@@ -814,7 +823,7 @@ final class HotkeyRecorderField: NSView {
         case kVK_ANSI_Comma: return ","
         case kVK_ANSI_Period: return "."
         case kVK_ANSI_Slash: return "/"
-        case kVK_ANSI_Backslash: return "\u{005C}"    // backslash
+        case kVK_ANSI_Backslash: return "\u{005C}" // backslash
         case kVK_Space: return "Space"
         case kVK_Return: return "Return"
         case kVK_Tab: return "Tab"
@@ -826,10 +835,10 @@ final class HotkeyRecorderField: NSView {
         case kVK_F7: return "F7"; case kVK_F8: return "F8"
         case kVK_F9: return "F9"; case kVK_F10: return "F10"
         case kVK_F11: return "F11"; case kVK_F12: return "F12"
-        case kVK_UpArrow: return "\u{2191}"            // ↑
-        case kVK_DownArrow: return "\u{2193}"          // ↓
-        case kVK_LeftArrow: return "\u{2190}"          // ←
-        case kVK_RightArrow: return "\u{2192}"         // →
+        case kVK_UpArrow: return "\u{2191}" // ↑
+        case kVK_DownArrow: return "\u{2193}" // ↓
+        case kVK_LeftArrow: return "\u{2190}" // ←
+        case kVK_RightArrow: return "\u{2192}" // →
         case kVK_PageUp: return "Page Up"
         case kVK_PageDown: return "Page Down"
         case kVK_Home: return "Home"
@@ -875,14 +884,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.center()
 
-        if #available(macOS 26, *) {
-            // Transparent window — Liquid Glass is rendered by SwiftUI
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            window.titlebarAppearsTransparent = true
-            window.styleMask.insert(.fullSizeContentView)
-            window.contentView = hostingView
-        } else {
+        do {
             let visualEffect = NSVisualEffectView()
             visualEffect.material = .sidebar
             visualEffect.blendingMode = .behindWindow
@@ -909,7 +911,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         didInitialFirstResponderClear = false
     }
 
-    func windowDidBecomeKey(_ notification: Notification) {
+    func windowDidBecomeKey(_: Notification) {
         // Clear the auto-selected first responder after the window has become
         // key, preventing focus rings from appearing on pickers or buttons.
         // Must happen in windowDidBecomeKey because windowWillBecomeKey fires

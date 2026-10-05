@@ -27,11 +27,7 @@ final class LauncherWindowController: NSWindowController {
         window.isReleasedWhenClosed = false
         window.level = .normal
 
-        if #available(macOS 26, *) {
-            window.isOpaque = false
-            window.backgroundColor = .clear
-            window.contentView = hostingView
-        } else {
+        do {
             window.isOpaque = true
             window.backgroundColor = NSColor.windowBackgroundColor
 
@@ -88,11 +84,7 @@ private struct LauncherView: View {
     var onSettings: (() -> Void)?
 
     var body: some View {
-        if #available(macOS 26, *) {
-            glassContent
-        } else {
-            fallbackContent
-        }
+        fallbackContent
     }
 
     // MARK: - macOS 26+ Liquid Glass
@@ -188,12 +180,7 @@ private struct LauncherView: View {
 
     private var primaryButton: some View {
         Group {
-            if #available(macOS 26, *) {
-                Button("Start Cleaning") { onStartCleaning?() }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.regular)
-                    .font(.system(size: 13, weight: .medium))
-            } else {
+            do {
                 Button(action: { onStartCleaning?() }) {
                     Text("Start Cleaning")
                         .font(.system(size: 13, weight: .medium))
@@ -211,12 +198,6 @@ private struct LauncherView: View {
 private extension View {
     @ViewBuilder
     func glassIconStyle() -> some View {
-        if #available(macOS 26, *) {
-            self
-                .padding(12)
-                .glassEffect(.clear.interactive(false), in: .circle)
-        } else {
-            self
-        }
+        self
     }
 }
